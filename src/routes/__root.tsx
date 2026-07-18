@@ -84,14 +84,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "SkillBridge AI turns college years into a verified readiness score employers can trust. Verify skills, close gaps, and land your first job.",
       },
-      { property: "og:title", content: "SkillBridge AI — Verified career readiness" },
+      { property: "og:title", content: "SkillBridge AI — Verified career readiness for students" },
       {
         property: "og:description",
         content:
-          "The only readiness score employers can trust, because it's earned, not claimed.",
+          "SkillBridge AI turns college years into a verified readiness score employers can trust. Verify skills, close gaps, and land your first job.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "SkillBridge AI — Verified career readiness for students" },
+      { name: "twitter:description", content: "SkillBridge AI turns college years into a verified readiness score employers can trust. Verify skills, close gaps, and land your first job." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/aad1d8eb-1068-42ad-a58a-7de92fe01cc4" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/aad1d8eb-1068-42ad-a58a-7de92fe01cc4" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
