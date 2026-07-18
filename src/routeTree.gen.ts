@@ -14,6 +14,7 @@ import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as ResumeRouteImport } from './routes/resume'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as InterviewRouteImport } from './routes/interview'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -43,6 +44,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JobsRoute = JobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InterviewRoute = InterviewRouteImport.update({
   id: '/interview',
   path: '/interview',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/interview': typeof InterviewRoute
+  '/jobs': typeof JobsRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/interview': typeof InterviewRoute
+  '/jobs': typeof JobsRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/interview': typeof InterviewRoute
+  '/jobs': typeof JobsRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/interview'
+    | '/jobs'
     | '/onboarding'
     | '/projects'
     | '/resume'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/interview'
+    | '/jobs'
     | '/onboarding'
     | '/projects'
     | '/resume'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/interview'
+    | '/jobs'
     | '/onboarding'
     | '/projects'
     | '/resume'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   InterviewRoute: typeof InterviewRoute
+  JobsRoute: typeof JobsRoute
   OnboardingRoute: typeof OnboardingRoute
   ProjectsRoute: typeof ProjectsRoute
   ResumeRoute: typeof ResumeRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/jobs': {
+      id: '/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/interview': {
       id: '/interview'
       path: '/interview'
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   InterviewRoute: InterviewRoute,
+  JobsRoute: JobsRoute,
   OnboardingRoute: OnboardingRoute,
   ProjectsRoute: ProjectsRoute,
   ResumeRoute: ResumeRoute,
