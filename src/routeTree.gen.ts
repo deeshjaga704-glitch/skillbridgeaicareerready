@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as ResumeRouteImport } from './routes/resume'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -24,6 +25,11 @@ const SkillsRoute = SkillsRouteImport.update({
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
   path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResumeRoute = ResumeRouteImport.update({
+  id: '/resume',
+  path: '/resume',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
 }
@@ -79,16 +88,25 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/onboarding'
     | '/projects'
+    | '/resume'
     | '/roadmap'
     | '/skills'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/onboarding' | '/projects' | '/roadmap' | '/skills'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/onboarding'
+    | '/projects'
+    | '/resume'
+    | '/roadmap'
+    | '/skills'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/onboarding'
     | '/projects'
+    | '/resume'
     | '/roadmap'
     | '/skills'
   fileRoutesById: FileRoutesById
@@ -98,6 +116,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   OnboardingRoute: typeof OnboardingRoute
   ProjectsRoute: typeof ProjectsRoute
+  ResumeRoute: typeof ResumeRoute
   RoadmapRoute: typeof RoadmapRoute
   SkillsRoute: typeof SkillsRoute
 }
@@ -116,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/roadmap'
       fullPath: '/roadmap'
       preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resume': {
+      id: '/resume'
+      path: '/resume'
+      fullPath: '/resume'
+      preLoaderRoute: typeof ResumeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -154,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   OnboardingRoute: OnboardingRoute,
   ProjectsRoute: ProjectsRoute,
+  ResumeRoute: ResumeRoute,
   RoadmapRoute: RoadmapRoute,
   SkillsRoute: SkillsRoute,
 }
