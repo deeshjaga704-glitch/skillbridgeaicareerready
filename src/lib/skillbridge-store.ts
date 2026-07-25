@@ -30,6 +30,70 @@ export type ReadinessScore = {
 
 const STORAGE_KEY = "skillbridge:student:v1";
 const SKILLS_KEY = "skillbridge:skills:v1";
+const CONN_KEY = "skillbridge:connections:v1";
+const ACTIVITY_KEY = "skillbridge:activity:v1";
+
+export type ConnectionId = "github" | "leetcode" | "hackerrank" | "linkedin";
+export type Connection = {
+  id: ConnectionId;
+  label: string;
+  connected: boolean;
+  handle?: string;
+  lastSyncedAt?: string;
+  note?: string;
+};
+
+export const DEFAULT_CONNECTIONS: Connection[] = [
+  { id: "github", label: "GitHub", connected: false, note: "Live public API — repos, commits, READMEs." },
+  { id: "leetcode", label: "LeetCode", connected: false, note: "Demo data — live sync coming soon." },
+  { id: "hackerrank", label: "HackerRank", connected: false, note: "Demo data — live sync coming soon." },
+  { id: "linkedin", label: "LinkedIn", connected: false, note: "Manual paste — LinkedIn's API doesn't allow import." },
+];
+
+export function getConnections(): Connection[] {
+  if (typeof window === "undefined") return DEFAULT_CONNECTIONS;
+  try {
+    const raw = localStorage.getItem(CONN_KEY);
+    return raw ? (JSON.parse(raw) as Connection[]) : DEFAULT_CONNECTIONS;
+  } catch {
+    return DEFAULT_CONNECTIONS;
+  }
+}
+export function saveConnections(c: Connection[]) {
+  localStorage.setItem(CONN_KEY, JSON.stringify(c));
+}
+
+export type ActivityItem = {
+  id: string;
+  at: string;
+  reason: string;
+  detail?: string;
+};
+
+export function getActivity(): ActivityItem[] {
+  if (typeof window === "undefined") return DEFAULT_ACTIVITY;
+  try {
+    const raw = localStorage.getItem(ACTIVITY_KEY);
+    return raw ? (JSON.parse(raw) as ActivityItem[]) : DEFAULT_ACTIVITY;
+  } catch {
+    return DEFAULT_ACTIVITY;
+  }
+}
+export function pushActivity(item: Omit<ActivityItem, "id" | "at">) {
+  const list = getActivity();
+  const next = [
+    { id: crypto.randomUUID(), at: new Date().toISOString(), ...item },
+    ...list,
+  ].slice(0, 20);
+  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next));
+  return next;
+}
+
+const DEFAULT_ACTIVITY: ActivityItem[] = [
+  { id: "a1", at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), reason: "GitHub sync", detail: "3 repos analyzed" },
+  { id: "a2", at: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(), reason: "Certificate verified", detail: "Coursera — Python for Everybody" },
+  { id: "a3", at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(), reason: "Course completed", detail: "Databases 101" },
+];
 
 export function getStudent(): Student | null {
   if (typeof window === "undefined") return null;
