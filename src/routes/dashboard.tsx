@@ -115,6 +115,10 @@ function Dashboard() {
               Based on <span className="font-semibold text-foreground">{score.verifiedProjects} verified projects</span>. We show a
               range because a single number would be false precision.
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Last recalculated {new Date(lastCalc).toLocaleString()}
+              {activity[0]?.reason ? ` · after ${activity[0].reason}` : ""}
+            </p>
 
             {/* range bar */}
             <div className="mt-6">
