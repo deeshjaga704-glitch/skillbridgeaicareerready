@@ -40,6 +40,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const [student, setStudent] = useState<Student | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -53,10 +54,12 @@ function Dashboard() {
       },
     );
     setSkills(getSkills());
+    setActivity(getActivity());
     setReady(true);
   }, []);
 
   const score = useMemo(() => computeReadiness(skills), [skills]);
+  const lastCalc = activity[0]?.at ?? new Date().toISOString();
   const verified = skills.filter((s) => s.status === "verified");
   const claimed = skills.filter((s) => s.status === "claimed");
 
