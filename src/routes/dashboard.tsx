@@ -10,14 +10,18 @@ import {
   MessageSquareText,
   Sparkles,
   TrendingUp,
+  Link2,
+  Activity,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   computeReadiness,
+  getActivity,
   getSkills,
   getStudent,
   isDecaying,
+  type ActivityItem,
   type Skill,
   type Student,
 } from "@/lib/skillbridge-store";
@@ -36,6 +40,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const [student, setStudent] = useState<Student | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -49,10 +54,12 @@ function Dashboard() {
       },
     );
     setSkills(getSkills());
+    setActivity(getActivity());
     setReady(true);
   }, []);
 
   const score = useMemo(() => computeReadiness(skills), [skills]);
+  const lastCalc = activity[0]?.at ?? new Date().toISOString();
   const verified = skills.filter((s) => s.status === "verified");
   const claimed = skills.filter((s) => s.status === "claimed");
 
@@ -108,6 +115,10 @@ function Dashboard() {
               Based on <span className="font-semibold text-foreground">{score.verifiedProjects} verified projects</span>. We show a
               range because a single number would be false precision.
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Last recalculated {new Date(lastCalc).toLocaleString()}
+              {activity[0]?.reason ? ` · after ${activity[0].reason}` : ""}
+            </p>
 
             {/* range bar */}
             <div className="mt-6">
@@ -129,6 +140,13 @@ function Dashboard() {
         {/* Quick links */}
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
           {[
+            {
+              to: "/connections",
+              icon: Link2,
+              title: "Connections",
+              desc: "Link GitHub & profiles",
+              tint: "primary",
+            },
             {
               to: "/roadmap",
               icon: Target,
@@ -190,6 +208,38 @@ function Dashboard() {
           subtitle={`${claimed.length} skills waiting on proof`}
           skills={claimed}
         />
+      </div>
+
+      {/* Activity feed */}
+      <div className="mt-8 rounded-3xl border border-border/60 bg-card p-6">
+        <div className="flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-soft text-teal">
+            <Activity className="h-4 w-4" />
+          </span>
+          <h2 className="font-display text-lg font-bold">Why your score changed</h2>
+        </div>
+        <ul className="mt-4 space-y-2">
+          {activity.slice(0, 6).map((a) => (
+            <li
+              key={a.id}
+              className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-2.5 text-sm"
+            >
+              <span className="h-2 w-2 rounded-full bg-primary" />
+              <span className="font-medium">{a.reason}</span>
+              {a.detail && (
+                <span className="text-muted-foreground">— {a.detail}</span>
+              )}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {new Date(a.at).toLocaleString()}
+              </span>
+            </li>
+          ))}
+          {activity.length === 0 && (
+            <li className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              No recalculations yet. Connect an account to get started.
+            </li>
+          )}
+        </ul>
       </div>
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-dashed border-primary/30 bg-primary-soft/40 p-5">
