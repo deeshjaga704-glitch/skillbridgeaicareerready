@@ -141,6 +141,13 @@ function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
           {[
             {
+              to: "/connections",
+              icon: Link2,
+              title: "Connections",
+              desc: "Link GitHub & profiles",
+              tint: "primary",
+            },
+            {
               to: "/roadmap",
               icon: Target,
               title: "Your roadmap",
