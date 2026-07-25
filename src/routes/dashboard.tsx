@@ -10,14 +10,18 @@ import {
   MessageSquareText,
   Sparkles,
   TrendingUp,
+  Link2,
+  Activity,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   computeReadiness,
+  getActivity,
   getSkills,
   getStudent,
   isDecaying,
+  type ActivityItem,
   type Skill,
   type Student,
 } from "@/lib/skillbridge-store";
