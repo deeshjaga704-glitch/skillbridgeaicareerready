@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyAltRouteImport } from './routes/verify-alt'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as ResumeRouteImport } from './routes/resume'
@@ -18,8 +19,15 @@ import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as InterviewRouteImport } from './routes/interview'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConnectionsRouteImport } from './routes/connections'
+import { Route as AppealsRouteImport } from './routes/appeals'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VTokenRouteImport } from './routes/v.$token'
 
+const VerifyAltRoute = VerifyAltRouteImport.update({
+  id: '/verify-alt',
+  path: '/verify-alt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SkillsRoute = SkillsRouteImport.update({
   id: '/skills',
   path: '/skills',
@@ -65,14 +73,25 @@ const ConnectionsRoute = ConnectionsRouteImport.update({
   path: '/connections',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppealsRoute = AppealsRouteImport.update({
+  id: '/appeals',
+  path: '/appeals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VTokenRoute = VTokenRouteImport.update({
+  id: '/v/$token',
+  path: '/v/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/interview': typeof InterviewRoute
@@ -82,9 +101,12 @@ export interface FileRoutesByFullPath {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify-alt': typeof VerifyAltRoute
+  '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/interview': typeof InterviewRoute
@@ -94,10 +116,13 @@ export interface FileRoutesByTo {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify-alt': typeof VerifyAltRoute
+  '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/interview': typeof InterviewRoute
@@ -107,11 +132,14 @@ export interface FileRoutesById {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify-alt': typeof VerifyAltRoute
+  '/v/$token': typeof VTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/appeals'
     | '/connections'
     | '/dashboard'
     | '/interview'
@@ -121,9 +149,12 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify-alt'
+    | '/v/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/appeals'
     | '/connections'
     | '/dashboard'
     | '/interview'
@@ -133,9 +164,12 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify-alt'
+    | '/v/$token'
   id:
     | '__root__'
     | '/'
+    | '/appeals'
     | '/connections'
     | '/dashboard'
     | '/interview'
@@ -145,10 +179,13 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify-alt'
+    | '/v/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppealsRoute: typeof AppealsRoute
   ConnectionsRoute: typeof ConnectionsRoute
   DashboardRoute: typeof DashboardRoute
   InterviewRoute: typeof InterviewRoute
@@ -158,10 +195,19 @@ export interface RootRouteChildren {
   ResumeRoute: typeof ResumeRoute
   RoadmapRoute: typeof RoadmapRoute
   SkillsRoute: typeof SkillsRoute
+  VerifyAltRoute: typeof VerifyAltRoute
+  VTokenRoute: typeof VTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-alt': {
+      id: '/verify-alt'
+      path: '/verify-alt'
+      fullPath: '/verify-alt'
+      preLoaderRoute: typeof VerifyAltRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/skills': {
       id: '/skills'
       path: '/skills'
@@ -225,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConnectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/appeals': {
+      id: '/appeals'
+      path: '/appeals'
+      fullPath: '/appeals'
+      preLoaderRoute: typeof AppealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -232,11 +285,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v/$token': {
+      id: '/v/$token'
+      path: '/v/$token'
+      fullPath: '/v/$token'
+      preLoaderRoute: typeof VTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppealsRoute: AppealsRoute,
   ConnectionsRoute: ConnectionsRoute,
   DashboardRoute: DashboardRoute,
   InterviewRoute: InterviewRoute,
@@ -246,6 +307,8 @@ const rootRouteChildren: RootRouteChildren = {
   ResumeRoute: ResumeRoute,
   RoadmapRoute: RoadmapRoute,
   SkillsRoute: SkillsRoute,
+  VerifyAltRoute: VerifyAltRoute,
+  VTokenRoute: VTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
