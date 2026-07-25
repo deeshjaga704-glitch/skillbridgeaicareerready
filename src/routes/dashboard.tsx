@@ -210,6 +210,38 @@ function Dashboard() {
         />
       </div>
 
+      {/* Activity feed */}
+      <div className="mt-8 rounded-3xl border border-border/60 bg-card p-6">
+        <div className="flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-soft text-teal">
+            <Activity className="h-4 w-4" />
+          </span>
+          <h2 className="font-display text-lg font-bold">Why your score changed</h2>
+        </div>
+        <ul className="mt-4 space-y-2">
+          {activity.slice(0, 6).map((a) => (
+            <li
+              key={a.id}
+              className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-2.5 text-sm"
+            >
+              <span className="h-2 w-2 rounded-full bg-primary" />
+              <span className="font-medium">{a.reason}</span>
+              {a.detail && (
+                <span className="text-muted-foreground">— {a.detail}</span>
+              )}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {new Date(a.at).toLocaleString()}
+              </span>
+            </li>
+          ))}
+          {activity.length === 0 && (
+            <li className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              No recalculations yet. Connect an account to get started.
+            </li>
+          )}
+        </ul>
+      </div>
+
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-dashed border-primary/30 bg-primary-soft/40 p-5">
         <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground">
