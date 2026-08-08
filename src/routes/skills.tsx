@@ -98,9 +98,11 @@ function SkillGapPage() {
                     <Badge variant={req.importance === "core" ? "secondary" : "outline"} className="rounded-full">
                       {req.importance === "core" ? "Core" : "Helpful"}
                     </Badge>
-                    {skill ? <VerificationBadge status={skill.status} /> : (
+                    {skill?.status === "verified" && skill.verificationMethod ? (
+                      <VerificationBadge method={skill.verificationMethod} />
+                    ) : (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        Not on your profile
+                        {skill ? "Claimed — not verified yet" : "Not on your profile"}
                       </span>
                     )}
                   </div>
