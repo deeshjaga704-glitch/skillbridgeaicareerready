@@ -19,6 +19,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as InterviewRouteImport } from './routes/interview'
 import { Route as EvidenceRouteImport } from './routes/evidence'
+import { Route as EmployersRouteImport } from './routes/employers'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as AppealsRouteImport } from './routes/appeals'
@@ -76,6 +77,11 @@ const EvidenceRoute = EvidenceRouteImport.update({
   path: '/evidence',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmployersRoute = EmployersRouteImport.update({
+  id: '/employers',
+  path: '/employers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
+  '/employers': typeof EmployersRoute
   '/evidence': typeof EvidenceRoute
   '/interview': typeof InterviewRoute
   '/jobs': typeof JobsRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
+  '/employers': typeof EmployersRoute
   '/evidence': typeof EvidenceRoute
   '/interview': typeof InterviewRoute
   '/jobs': typeof JobsRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
+  '/employers': typeof EmployersRoute
   '/evidence': typeof EvidenceRoute
   '/interview': typeof InterviewRoute
   '/jobs': typeof JobsRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/appeals'
     | '/connections'
     | '/dashboard'
+    | '/employers'
     | '/evidence'
     | '/interview'
     | '/jobs'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/appeals'
     | '/connections'
     | '/dashboard'
+    | '/employers'
     | '/evidence'
     | '/interview'
     | '/jobs'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/appeals'
     | '/connections'
     | '/dashboard'
+    | '/employers'
     | '/evidence'
     | '/interview'
     | '/jobs'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   AppealsRoute: typeof AppealsRoute
   ConnectionsRoute: typeof ConnectionsRoute
   DashboardRoute: typeof DashboardRoute
+  EmployersRoute: typeof EmployersRoute
   EvidenceRoute: typeof EvidenceRoute
   InterviewRoute: typeof InterviewRoute
   JobsRoute: typeof JobsRoute
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EvidenceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employers': {
+      id: '/employers'
+      path: '/employers'
+      fullPath: '/employers'
+      preLoaderRoute: typeof EmployersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -360,6 +380,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppealsRoute: AppealsRoute,
   ConnectionsRoute: ConnectionsRoute,
   DashboardRoute: DashboardRoute,
+  EmployersRoute: EmployersRoute,
   EvidenceRoute: EvidenceRoute,
   InterviewRoute: InterviewRoute,
   JobsRoute: JobsRoute,
