@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyAltRouteImport } from './routes/verify-alt'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as ResumeRouteImport } from './routes/resume'
@@ -17,15 +18,24 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as InterviewRouteImport } from './routes/interview'
+import { Route as EvidenceRouteImport } from './routes/evidence'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as AppealsRouteImport } from './routes/appeals'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EmployersIndexRouteImport } from './routes/employers.index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
+import { Route as ReportTokenRouteImport } from './routes/report.$token'
+import { Route as EmployersIdRouteImport } from './routes/employers.$id'
 
 const VerifyAltRoute = VerifyAltRouteImport.update({
   id: '/verify-alt',
   path: '/verify-alt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SkillsRoute = SkillsRouteImport.update({
@@ -63,6 +73,11 @@ const InterviewRoute = InterviewRouteImport.update({
   path: '/interview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EvidenceRoute = EvidenceRouteImport.update({
+  id: '/evidence',
+  path: '/evidence',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -83,9 +98,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmployersIndexRoute = EmployersIndexRouteImport.update({
+  id: '/employers/',
+  path: '/employers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VTokenRoute = VTokenRouteImport.update({
   id: '/v/$token',
   path: '/v/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportTokenRoute = ReportTokenRouteImport.update({
+  id: '/report/$token',
+  path: '/report/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployersIdRoute = EmployersIdRouteImport.update({
+  id: '/employers/$id',
+  path: '/employers/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -94,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
+  '/evidence': typeof EvidenceRoute
   '/interview': typeof InterviewRoute
   '/jobs': typeof JobsRoute
   '/onboarding': typeof OnboardingRoute
@@ -101,14 +132,19 @@ export interface FileRoutesByFullPath {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
+  '/employers/$id': typeof EmployersIdRoute
+  '/report/$token': typeof ReportTokenRoute
   '/v/$token': typeof VTokenRoute
+  '/employers/': typeof EmployersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
+  '/evidence': typeof EvidenceRoute
   '/interview': typeof InterviewRoute
   '/jobs': typeof JobsRoute
   '/onboarding': typeof OnboardingRoute
@@ -116,8 +152,12 @@ export interface FileRoutesByTo {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
+  '/employers/$id': typeof EmployersIdRoute
+  '/report/$token': typeof ReportTokenRoute
   '/v/$token': typeof VTokenRoute
+  '/employers': typeof EmployersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +165,7 @@ export interface FileRoutesById {
   '/appeals': typeof AppealsRoute
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
+  '/evidence': typeof EvidenceRoute
   '/interview': typeof InterviewRoute
   '/jobs': typeof JobsRoute
   '/onboarding': typeof OnboardingRoute
@@ -132,8 +173,12 @@ export interface FileRoutesById {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
+  '/employers/$id': typeof EmployersIdRoute
+  '/report/$token': typeof ReportTokenRoute
   '/v/$token': typeof VTokenRoute
+  '/employers/': typeof EmployersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,6 +187,7 @@ export interface FileRouteTypes {
     | '/appeals'
     | '/connections'
     | '/dashboard'
+    | '/evidence'
     | '/interview'
     | '/jobs'
     | '/onboarding'
@@ -149,14 +195,19 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify'
     | '/verify-alt'
+    | '/employers/$id'
+    | '/report/$token'
     | '/v/$token'
+    | '/employers/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/appeals'
     | '/connections'
     | '/dashboard'
+    | '/evidence'
     | '/interview'
     | '/jobs'
     | '/onboarding'
@@ -164,14 +215,19 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify'
     | '/verify-alt'
+    | '/employers/$id'
+    | '/report/$token'
     | '/v/$token'
+    | '/employers'
   id:
     | '__root__'
     | '/'
     | '/appeals'
     | '/connections'
     | '/dashboard'
+    | '/evidence'
     | '/interview'
     | '/jobs'
     | '/onboarding'
@@ -179,8 +235,12 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify'
     | '/verify-alt'
+    | '/employers/$id'
+    | '/report/$token'
     | '/v/$token'
+    | '/employers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -188,6 +248,7 @@ export interface RootRouteChildren {
   AppealsRoute: typeof AppealsRoute
   ConnectionsRoute: typeof ConnectionsRoute
   DashboardRoute: typeof DashboardRoute
+  EvidenceRoute: typeof EvidenceRoute
   InterviewRoute: typeof InterviewRoute
   JobsRoute: typeof JobsRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -195,8 +256,12 @@ export interface RootRouteChildren {
   ResumeRoute: typeof ResumeRoute
   RoadmapRoute: typeof RoadmapRoute
   SkillsRoute: typeof SkillsRoute
+  VerifyRoute: typeof VerifyRoute
   VerifyAltRoute: typeof VerifyAltRoute
+  EmployersIdRoute: typeof EmployersIdRoute
+  ReportTokenRoute: typeof ReportTokenRoute
   VTokenRoute: typeof VTokenRoute
+  EmployersIndexRoute: typeof EmployersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -206,6 +271,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-alt'
       fullPath: '/verify-alt'
       preLoaderRoute: typeof VerifyAltRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/skills': {
@@ -257,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InterviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/evidence': {
+      id: '/evidence'
+      path: '/evidence'
+      fullPath: '/evidence'
+      preLoaderRoute: typeof EvidenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -285,11 +364,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employers/': {
+      id: '/employers/'
+      path: '/employers'
+      fullPath: '/employers/'
+      preLoaderRoute: typeof EmployersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/v/$token': {
       id: '/v/$token'
       path: '/v/$token'
       fullPath: '/v/$token'
       preLoaderRoute: typeof VTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report/$token': {
+      id: '/report/$token'
+      path: '/report/$token'
+      fullPath: '/report/$token'
+      preLoaderRoute: typeof ReportTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employers/$id': {
+      id: '/employers/$id'
+      path: '/employers/$id'
+      fullPath: '/employers/$id'
+      preLoaderRoute: typeof EmployersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -300,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppealsRoute: AppealsRoute,
   ConnectionsRoute: ConnectionsRoute,
   DashboardRoute: DashboardRoute,
+  EvidenceRoute: EvidenceRoute,
   InterviewRoute: InterviewRoute,
   JobsRoute: JobsRoute,
   OnboardingRoute: OnboardingRoute,
@@ -307,8 +408,12 @@ const rootRouteChildren: RootRouteChildren = {
   ResumeRoute: ResumeRoute,
   RoadmapRoute: RoadmapRoute,
   SkillsRoute: SkillsRoute,
+  VerifyRoute: VerifyRoute,
   VerifyAltRoute: VerifyAltRoute,
+  EmployersIdRoute: EmployersIdRoute,
+  ReportTokenRoute: ReportTokenRoute,
   VTokenRoute: VTokenRoute,
+  EmployersIndexRoute: EmployersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
