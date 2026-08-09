@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CANDIDATES } from "@/lib/skillbridge-candidates";
 
-export const Route = createFileRoute("/employers")({
+export const Route = createFileRoute("/employers/")({
   head: () => ({
     meta: [
       { title: "Hire on evidence — SkillBridge AI for employers" },
