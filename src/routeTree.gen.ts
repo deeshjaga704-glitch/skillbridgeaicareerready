@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyAltRouteImport } from './routes/verify-alt'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as ResumeRouteImport } from './routes/resume'
@@ -26,6 +27,11 @@ import { Route as VTokenRouteImport } from './routes/v.$token'
 const VerifyAltRoute = VerifyAltRouteImport.update({
   id: '/verify-alt',
   path: '/verify-alt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SkillsRoute = SkillsRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
   '/v/$token': typeof VTokenRoute
 }
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
   '/v/$token': typeof VTokenRoute
 }
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
   '/skills': typeof SkillsRoute
+  '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
   '/v/$token': typeof VTokenRoute
 }
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify'
     | '/verify-alt'
     | '/v/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify'
     | '/verify-alt'
     | '/v/$token'
   id:
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/roadmap'
     | '/skills'
+    | '/verify'
     | '/verify-alt'
     | '/v/$token'
   fileRoutesById: FileRoutesById
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   ResumeRoute: typeof ResumeRoute
   RoadmapRoute: typeof RoadmapRoute
   SkillsRoute: typeof SkillsRoute
+  VerifyRoute: typeof VerifyRoute
   VerifyAltRoute: typeof VerifyAltRoute
   VTokenRoute: typeof VTokenRoute
 }
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-alt'
       fullPath: '/verify-alt'
       preLoaderRoute: typeof VerifyAltRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/skills': {
@@ -307,6 +327,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResumeRoute: ResumeRoute,
   RoadmapRoute: RoadmapRoute,
   SkillsRoute: SkillsRoute,
+  VerifyRoute: VerifyRoute,
   VerifyAltRoute: VerifyAltRoute,
   VTokenRoute: VTokenRoute,
 }
