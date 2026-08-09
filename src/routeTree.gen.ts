@@ -23,6 +23,7 @@ import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as AppealsRouteImport } from './routes/appeals'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
+import { Route as ReportTokenRouteImport } from './routes/report.$token'
 
 const VerifyAltRoute = VerifyAltRouteImport.update({
   id: '/verify-alt',
@@ -94,6 +95,11 @@ const VTokenRoute = VTokenRouteImport.update({
   path: '/v/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportTokenRoute = ReportTokenRouteImport.update({
+  id: '/report/$token',
+  path: '/report/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/skills': typeof SkillsRoute
   '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
+  '/report/$token': typeof ReportTokenRoute
   '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesByTo {
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/skills': typeof SkillsRoute
   '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
+  '/report/$token': typeof ReportTokenRoute
   '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesById {
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/skills': typeof SkillsRoute
   '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
+  '/report/$token': typeof ReportTokenRoute
   '/v/$token': typeof VTokenRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/skills'
     | '/verify'
     | '/verify-alt'
+    | '/report/$token'
     | '/v/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/skills'
     | '/verify'
     | '/verify-alt'
+    | '/report/$token'
     | '/v/$token'
   id:
     | '__root__'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/skills'
     | '/verify'
     | '/verify-alt'
+    | '/report/$token'
     | '/v/$token'
   fileRoutesById: FileRoutesById
 }
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   SkillsRoute: typeof SkillsRoute
   VerifyRoute: typeof VerifyRoute
   VerifyAltRoute: typeof VerifyAltRoute
+  ReportTokenRoute: typeof ReportTokenRoute
   VTokenRoute: typeof VTokenRoute
 }
 
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/report/$token': {
+      id: '/report/$token'
+      path: '/report/$token'
+      fullPath: '/report/$token'
+      preLoaderRoute: typeof ReportTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -329,6 +349,7 @@ const rootRouteChildren: RootRouteChildren = {
   SkillsRoute: SkillsRoute,
   VerifyRoute: VerifyRoute,
   VerifyAltRoute: VerifyAltRoute,
+  ReportTokenRoute: ReportTokenRoute,
   VTokenRoute: VTokenRoute,
 }
 export const routeTree = rootRouteImport
