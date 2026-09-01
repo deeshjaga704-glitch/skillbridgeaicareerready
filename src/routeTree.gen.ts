@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyAltRouteImport } from './routes/verify-alt'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as SkillsRouteImport } from './routes/skills'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as ResumeRouteImport } from './routes/resume'
 import { Route as ProjectsRouteImport } from './routes/projects'
@@ -41,6 +42,11 @@ const VerifyRoute = VerifyRouteImport.update({
 const SkillsRoute = SkillsRouteImport.update({
   id: '/skills',
   path: '/skills',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RoadmapRoute = RoadmapRouteImport.update({
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skills': typeof SkillsRoute
   '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skills': typeof SkillsRoute
   '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
   '/roadmap': typeof RoadmapRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skills': typeof SkillsRoute
   '/verify': typeof VerifyRoute
   '/verify-alt': typeof VerifyAltRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/resume'
     | '/roadmap'
+    | '/sitemap.xml'
     | '/skills'
     | '/verify'
     | '/verify-alt'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/resume'
     | '/roadmap'
+    | '/sitemap.xml'
     | '/skills'
     | '/verify'
     | '/verify-alt'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/resume'
     | '/roadmap'
+    | '/sitemap.xml'
     | '/skills'
     | '/verify'
     | '/verify-alt'
@@ -255,6 +267,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   ResumeRoute: typeof ResumeRoute
   RoadmapRoute: typeof RoadmapRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SkillsRoute: typeof SkillsRoute
   VerifyRoute: typeof VerifyRoute
   VerifyAltRoute: typeof VerifyAltRoute
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/skills'
       fullPath: '/skills'
       preLoaderRoute: typeof SkillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/roadmap': {
@@ -407,6 +427,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   ResumeRoute: ResumeRoute,
   RoadmapRoute: RoadmapRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SkillsRoute: SkillsRoute,
   VerifyRoute: VerifyRoute,
   VerifyAltRoute: VerifyAltRoute,
