@@ -78,6 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "google-site-verification", content: "o65jvdWt4KKmNre1alz1nEtIJ1zr9rkZd1yZH8A1VS8" },
       { title: "SkillBridge AI — Verified career readiness for students" },
       {
         name: "description",
