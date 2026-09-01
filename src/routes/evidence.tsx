@@ -115,7 +115,7 @@ function EvidencePage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-primary/30 bg-primary-soft/40 p-5">
           <p className="text-sm">Add another project and watch your readiness range move.</p>
-          <Link to="/verify">
+          <Link to="/verify" search={{ skill: undefined }}>
             <Button className="rounded-full">Verify a new skill</Button>
           </Link>
         </div>
