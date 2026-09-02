@@ -3,17 +3,22 @@
 
 export type SkillStatus = "verified" | "claimed";
 
+export type SkillCategory = "technical" | "concept" | "tool" | "project";
+
 export type Skill = {
   id: string;
   name: string;
   status: SkillStatus;
   source: "resume" | "manual" | "project";
+  category?: SkillCategory;
+  extractedAt?: string; // ISO — when it entered the inventory
   lastVerifiedAt?: string; // ISO
   confidenceLow?: number;
   confidenceHigh?: number;
   verificationMethod?: VerificationMethod;
   verificationRecordId?: string;
 };
+
 
 export type Student = {
   name: string;
@@ -358,4 +363,68 @@ export function isDecaying(skill: Skill): boolean {
 export function monthsSince(iso?: string): number {
   if (!iso) return 0;
   return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24 * 30);
+}
+
+/* ------------------------- Resume upload + extraction ------------------------- */
+
+const RESUME_KEY = "skillbridge:resume:v1";
+
+export type ResumeMeta = {
+  fileName: string;
+  sizeKb: number;
+  uploadedAt: string;
+  skillCount: number;
+  roles?: { role: string; match: number; why: string }[];
+};
+
+export function getResumeMeta(): ResumeMeta | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(RESUME_KEY);
+    return raw ? (JSON.parse(raw) as ResumeMeta) : null;
+  } catch {
+    return null;
+  }
+}
+export function saveResumeMeta(m: ResumeMeta) {
+  localStorage.setItem(RESUME_KEY, JSON.stringify(m));
+}
+export function clearResumeMeta() {
+  localStorage.removeItem(RESUME_KEY);
+}
+
+/** Remove every skill that came from a resume import (used when deleting a resume). */
+export function removeResumeSkills() {
+  const kept = getSkills().filter((s) => !(s.source === "resume" && s.status === "claimed"));
+  saveSkills(kept);
+  return kept;
+}
+
+/**
+ * Add resume-extracted skills to the inventory. They ALWAYS enter as "claimed" —
+ * AI extraction can never produce a verified skill. Existing skills are untouched.
+ */
+export function addClaimedSkills(
+  items: { name: string; category?: SkillCategory }[],
+  source: Skill["source"] = "resume",
+): Skill[] {
+  const existing = getSkills();
+  const have = new Set(existing.map((s) => s.name.toLowerCase()));
+  const added: Skill[] = [];
+  for (const item of items) {
+    const name = item.name.trim();
+    if (!name || have.has(name.toLowerCase())) continue;
+    have.add(name.toLowerCase());
+    added.push({
+      id: crypto.randomUUID(),
+      name,
+      status: "claimed",
+      source,
+      category: item.category,
+      extractedAt: new Date().toISOString(),
+    });
+  }
+  const next = [...existing, ...added];
+  saveSkills(next);
+  return next;
 }
