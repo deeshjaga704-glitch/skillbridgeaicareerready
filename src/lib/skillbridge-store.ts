@@ -3,17 +3,22 @@
 
 export type SkillStatus = "verified" | "claimed";
 
+export type SkillCategory = "technical" | "concept" | "tool" | "project";
+
 export type Skill = {
   id: string;
   name: string;
   status: SkillStatus;
   source: "resume" | "manual" | "project";
+  category?: SkillCategory;
+  extractedAt?: string; // ISO — when it entered the inventory
   lastVerifiedAt?: string; // ISO
   confidenceLow?: number;
   confidenceHigh?: number;
   verificationMethod?: VerificationMethod;
   verificationRecordId?: string;
 };
+
 
 export type Student = {
   name: string;
