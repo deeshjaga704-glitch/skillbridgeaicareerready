@@ -14,6 +14,7 @@ import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as ResumeScanRouteImport } from './routes/resume-scan'
 import { Route as ResumeRouteImport } from './routes/resume'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -52,6 +53,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
   path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResumeScanRoute = ResumeScanRouteImport.update({
+  id: '/resume-scan',
+  path: '/resume-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResumeRoute = ResumeRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
+  '/resume-scan': typeof ResumeScanRoute
   '/roadmap': typeof RoadmapRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skills': typeof SkillsRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
+  '/resume-scan': typeof ResumeScanRoute
   '/roadmap': typeof RoadmapRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skills': typeof SkillsRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
   '/resume': typeof ResumeRoute
+  '/resume-scan': typeof ResumeScanRoute
   '/roadmap': typeof RoadmapRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skills': typeof SkillsRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/projects'
     | '/resume'
+    | '/resume-scan'
     | '/roadmap'
     | '/sitemap.xml'
     | '/skills'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/projects'
     | '/resume'
+    | '/resume-scan'
     | '/roadmap'
     | '/sitemap.xml'
     | '/skills'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/projects'
     | '/resume'
+    | '/resume-scan'
     | '/roadmap'
     | '/sitemap.xml'
     | '/skills'
@@ -266,6 +278,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   ProjectsRoute: typeof ProjectsRoute
   ResumeRoute: typeof ResumeRoute
+  ResumeScanRoute: typeof ResumeScanRoute
   RoadmapRoute: typeof RoadmapRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SkillsRoute: typeof SkillsRoute
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/roadmap'
       fullPath: '/roadmap'
       preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resume-scan': {
+      id: '/resume-scan'
+      path: '/resume-scan'
+      fullPath: '/resume-scan'
+      preLoaderRoute: typeof ResumeScanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/resume': {
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   ProjectsRoute: ProjectsRoute,
   ResumeRoute: ResumeRoute,
+  ResumeScanRoute: ResumeScanRoute,
   RoadmapRoute: RoadmapRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SkillsRoute: SkillsRoute,

@@ -29,6 +29,7 @@ import {
   type Student,
 } from "@/lib/skillbridge-store";
 import { SkillStatusBadge } from "@/components/skill-status-badge";
+import { SkillInventory } from "@/components/skill-inventory";
 import {
   PROJECT_EVIDENCE,
   rankedActions,
