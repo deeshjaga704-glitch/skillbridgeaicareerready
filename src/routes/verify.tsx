@@ -55,100 +55,87 @@ const SOURCES: { id: VerificationMethod; label: string; desc: string; icon: Reac
   { id: "instructor-signoff", label: "Instructor sign-off", desc: "Your lecturer confirms the work.", icon: GraduationCap },
 ];
 
-const ANALYSIS_STEPS = [
-  { label: "Reading commit history", detail: "Gradual commits over 6 weeks — not a single dump" },
-  { label: "Checking originality", detail: "No match against common tutorial repositories" },
-  { label: "Reviewing code structure", detail: "Typed functions, small modules, clear naming" },
-  { label: "Running tests", detail: "24 of 24 tests passing" },
-  { label: "Scoring documentation", detail: "README explains setup and trade-offs" },
+const RUNNING_STEPS = [
+  "Fetching the project",
+  "Reading commit history",
+  "Looking for a test suite",
+  "Checking the last test run",
+  "Scoring documentation & originality",
 ];
 
-const STEPS = ["Skill", "Evidence source", "Attach", "Analysis", "Assessment", "Result"] as const;
+const STEPS = ["Skill", "Evidence source", "Attach", "Checks", "Assessment", "Result"] as const;
+
+const OUTCOME_ICON = {
+  pass: CheckCircle2,
+  warn: AlertTriangle,
+  fail: XCircle,
+} as const;
+
+const OUTCOME_CLASS = {
+  pass: "text-success",
+  warn: "text-warning",
+  fail: "text-destructive",
+} as const;
+
+/** Deterministic assessment from the project evidence already on file (no repo linked). */
+function localAssessment(skillName: string, summary: string): ProjectAssessment {
+  const projects = projectsForSkill(skillName);
+  const tests = projects.reduce((a, p) => a + p.tests.count, 0);
+  const passing = projects.reduce((a, p) => a + p.tests.passing, 0);
+  const rate = tests ? passing / tests : 0;
+  const docs = projects.some((p) => p.documentation === "thorough") ? 85 : projects.length ? 62 : 30;
+  const checks: AssessmentCheck[] = [
+    {
+      id: "projects",
+      label: "Project on file",
+      outcome: projects.length ? "pass" : "fail",
+      detail: projects.length
+        ? `${projects.length} graded project(s): ${projects.map((p) => p.title).join(", ")}`
+        : "No graded project is attached to this skill yet",
+      strength: projects.length ? 0.8 : 0,
+    },
+    {
+      id: "tests",
+      label: "Test run",
+      outcome: tests === 0 ? "fail" : rate === 1 ? "pass" : "warn",
+      detail: tests ? `${passing} of ${tests} tests passing` : "No tests were run for this evidence",
+      strength: rate,
+    },
+    {
+      id: "docs",
+      label: "Documentation",
+      outcome: docs >= 80 ? "pass" : docs >= 60 ? "warn" : "fail",
+      detail: projects.length
+        ? `Documentation rated ${projects[0]!.documentation}`
+        : "Nothing to score yet",
+      strength: docs / 100,
+    },
+  ];
+  const dimensions = projects.length
+    ? projects[0]!.assessment.map((a) => ({ dimension: a.dimension, score: a.score, note: a.note }))
+    : [{ dimension: "Evidence", score: 20, note: "Nothing submitted yet" }];
+  const overall = Math.round(dimensions.reduce((a, d) => a + d.score, 0) / dimensions.length);
+  const failed = checks.filter((c) => c.outcome === "fail").length;
+  const verdict: ProjectAssessment["verdict"] =
+    failed === 0 && overall >= 70 ? "verified" : failed <= 1 && overall >= 50 ? "partial" : "not_verified";
+  return {
+    repo: summary || "Submitted project",
+    repoUrl: "",
+    checks,
+    dimensions,
+    tests: { files: tests },
+    overall,
+    verdict,
+    summary:
+      verdict === "verified"
+        ? "The checks ran clean on your submitted project."
+        : verdict === "partial"
+        ? "Some checks were weak — this counts as partial evidence."
+        : "There isn't enough working evidence here to verify the skill yet.",
+  };
+}
 
 function VerifyFlow() {
-  const { skill: presetSkill } = useSearch({ from: "/verify" });
-  const [step, setStep] = useState(0);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [skillId, setSkillId] = useState<string>("");
-  const [source, setSource] = useState<VerificationMethod | "">("");
-  const [url, setUrl] = useState("");
-  const [done, setDone] = useState<number>(-1);
-  const [record, setRecord] = useState<VerificationRecord | null>(null);
-
-  useEffect(() => {
-    const s = getSkills();
-    setSkills(s);
-    if (presetSkill) {
-      const found = s.find((x) => x.name.toLowerCase() === presetSkill.toLowerCase());
-      if (found) {
-        setSkillId(found.id);
-        setStep(1);
-      }
-    }
-  }, [presetSkill]);
-
-  const skill = skills.find((s) => s.id === skillId);
-
-  // Analysis animation
-  useEffect(() => {
-    if (step !== 3) return;
-    setDone(-1);
-    let i = 0;
-    const t = setInterval(() => {
-      setDone(i);
-      i += 1;
-      if (i >= ANALYSIS_STEPS.length) {
-        clearInterval(t);
-        setTimeout(() => setStep(4), 700);
-      }
-    }, 750);
-    return () => clearInterval(t);
-  }, [step]);
-
-  const finish = () => {
-    if (!skill || !source) return;
-    const student = getStudent();
-    const token = `${skill.name.toLowerCase().replace(/[^a-z]/g, "")}-${Date.now().toString(36)}`;
-    const rec: VerificationRecord = {
-      id: crypto.randomUUID(),
-      token,
-      skillId: skill.id,
-      skillName: skill.name,
-      studentName: student?.name ?? "Alex Rivera",
-      method: source,
-      outcome: "verified",
-      evidenceSummary: url || "Project submitted in-platform",
-      timestamp: new Date().toISOString(),
-      reason: "Multiple independent signals agreed: original work, consistent style, tests passing.",
-      signals: [
-        { type: "commit_pattern", label: "Commit pattern", outcome: "pass", strength: 0.85, detail: ANALYSIS_STEPS[0].detail },
-        { type: "originality_check", label: "Code originality", outcome: "pass", strength: 0.9, detail: ANALYSIS_STEPS[1].detail },
-        { type: "style_consistency", label: "Style consistency", outcome: "pass", strength: 0.78, detail: ANALYSIS_STEPS[2].detail },
-        { type: "graded_project", label: "Tests & rubric", outcome: "pass", strength: 0.88, detail: ANALYSIS_STEPS[3].detail },
-      ],
-    };
-    upsertRecord(rec);
-    const next = skills.map((s) =>
-      s.id === skill.id
-        ? {
-            ...s,
-            status: "verified" as const,
-            source: "project" as const,
-            lastVerifiedAt: rec.timestamp,
-            confidenceLow: 70,
-            confidenceHigh: 83,
-            verificationMethod: source,
-            verificationRecordId: rec.id,
-          }
-        : s,
-    );
-    saveSkills(next);
-    setSkills(next);
-    pushActivity({ reason: `${skill.name} verified`, detail: `via ${source.replace(/-/g, " ")}` });
-    setRecord(rec);
-    setStep(5);
-    toast.success(`${skill.name} is now verified`);
-  };
 
   return (
     <AppShell>
