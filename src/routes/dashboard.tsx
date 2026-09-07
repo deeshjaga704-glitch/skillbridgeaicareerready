@@ -358,6 +358,10 @@ function Dashboard() {
         </section>
       )}
 
+      <div className="mt-8">
+        <SkillInventory skills={skills} />
+      </div>
+
       {/* 5. Recent evidence */}
       <section className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-border/60 bg-card p-6">
