@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ResumeSkillExtraction } from "@/components/resume-skill-extraction";
 import { saveStudent } from "@/lib/skillbridge-store";
 import { toast } from "sonner";
 
