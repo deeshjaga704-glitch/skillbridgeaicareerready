@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Upload, Sparkles, Info } from "lucide-react";
+import { ArrowLeft, ArrowRight, Sparkles, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ResumeSkillExtraction } from "@/components/resume-skill-extraction";
 import { saveStudent } from "@/lib/skillbridge-store";
 import { toast } from "sonner";
 
@@ -152,30 +153,14 @@ function Onboarding() {
 
             <div className="space-y-2">
               <Label>Resume (optional)</Label>
-              <label
-                htmlFor="resume"
-                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/40 px-6 py-8 text-center transition-colors hover:border-primary/60 hover:bg-primary-soft/40"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-primary-soft text-primary">
-                  <Upload className="h-4 w-4" />
-                </span>
-                <span className="mt-3 text-sm font-medium">
-                  {resumeName ?? "Click to upload your resume"}
-                </span>
-                <span className="mt-1 text-xs text-muted-foreground">
-                  PDF or DOCX · We'll extract claimed skills for you
-                </span>
-                <input
-                  id="resume"
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) setResumeName(f.name);
+              <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+                <ResumeSkillExtraction
+                  onConfirmed={(count, fileName) => {
+                    setResumeName(fileName);
+                    toast.success(`${count} claimed skills saved to your profile.`);
                   }}
                 />
-              </label>
+              </div>
             </div>
           </div>
 
