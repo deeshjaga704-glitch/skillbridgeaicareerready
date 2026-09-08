@@ -1,7 +1,7 @@
 // Shared mock data + localStorage-backed store for SkillBridge AI prototype.
 // This is a client-only prototype; no backend yet.
 
-export type SkillStatus = "verified" | "claimed";
+export type SkillStatus = "verified" | "claimed" | "in-review" | "needs-evidence";
 
 export type SkillCategory = "technical" | "concept" | "tool" | "project";
 
@@ -149,7 +149,12 @@ export type SignalType =
   | "style_consistency"
   | "graded_project"
   | "live_check"
-  | "instructor_signoff";
+  | "instructor_signoff"
+  | "tests"
+  | "documentation"
+  | "quality"
+  | "relevance"
+  | "evidence_source";
 
 export type SignalOutcome = "pass" | "warn" | "fail" | "pending";
 
@@ -175,6 +180,15 @@ export type VerificationRecord = {
   signals: VerificationSignal[];
   timestamp: string;
   reason: string; // plain-language explanation
+  /** Raw analysis output when the evidence was actually inspected. */
+  analysis?: {
+    source: "github" | "text";
+    overall: number;
+    repo?: Record<string, unknown>;
+    dimensions: { dimension: string; score: number; note: string }[];
+    facts: Record<string, string[]>;
+    warnings: string[];
+  };
 };
 
 export const DEFAULT_SKILLS: Skill[] = [

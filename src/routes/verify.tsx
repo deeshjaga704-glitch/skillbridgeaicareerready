@@ -1,9 +1,12 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
+  AlertTriangle,
+  XCircle,
   Loader2,
   Github,
   Upload,
@@ -17,6 +20,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   getSkills,
@@ -25,11 +29,17 @@ import {
   upsertRecord,
   pushActivity,
   type Skill,
+  type SignalType,
   type VerificationMethod,
   type VerificationRecord,
 } from "@/lib/skillbridge-store";
 import { SkillStatusBadge } from "@/components/skill-status-badge";
 import { skillState, projectsForSkill } from "@/lib/skillbridge-evidence";
+import {
+  analyzeEvidence,
+  type VerificationAnalysis,
+  type CheckOutcome,
+} from "@/lib/verification-analysis.functions";
 
 export const Route = createFileRoute("/verify")({
   head: () => ({
@@ -37,10 +47,11 @@ export const Route = createFileRoute("/verify")({
       { title: "Verify a skill — SkillBridge AI" },
       {
         name: "description",
-        content: "A step-by-step verification flow: pick a skill, attach evidence, watch the analysis, get a report.",
+        content:
+          "A step-by-step verification flow: pick a skill, attach a real repository, watch the tests, docs and quality checks run, get a report.",
       },
       { property: "og:title", content: "Verify a skill — SkillBridge AI" },
-      { property: "og:description", content: "Watch every verification step happen — no black box." },
+      { property: "og:description", content: "Real checks on real code — no black box." },
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({ skill: typeof s.skill === "string" ? s.skill : undefined }),
@@ -48,22 +59,34 @@ export const Route = createFileRoute("/verify")({
 });
 
 const SOURCES: { id: VerificationMethod; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "github-repo", label: "GitHub repository", desc: "We read commits, structure, and README.", icon: Github },
-  { id: "in-platform-project", label: "Upload a project", desc: "Graded in-platform against a rubric.", icon: Upload },
+  { id: "github-repo", label: "GitHub repository", desc: "We read commits, tests, CI results, structure and README.", icon: Github },
+  { id: "in-platform-project", label: "Upload a project", desc: "Link the repo of the project you submitted.", icon: Upload },
   { id: "live-coding", label: "Live-coding check", desc: "25-minute timed task, same weight as a repo.", icon: Terminal },
   { id: "oral-walkthrough", label: "Oral walkthrough", desc: "Explain your project out loud.", icon: Mic },
   { id: "instructor-signoff", label: "Instructor sign-off", desc: "Your lecturer confirms the work.", icon: GraduationCap },
 ];
 
-const ANALYSIS_STEPS = [
-  { label: "Reading commit history", detail: "Gradual commits over 6 weeks — not a single dump" },
-  { label: "Checking originality", detail: "No match against common tutorial repositories" },
-  { label: "Reviewing code structure", detail: "Typed functions, small modules, clear naming" },
-  { label: "Running tests", detail: "24 of 24 tests passing" },
-  { label: "Scoring documentation", detail: "README explains setup and trade-offs" },
+const RUNNING_STEPS = [
+  "Fetching the repository from GitHub",
+  "Reading commit history",
+  "Looking for tests and CI results",
+  "Scoring documentation",
+  "Reviewing code quality",
 ];
 
 const STEPS = ["Skill", "Evidence source", "Attach", "Analysis", "Assessment", "Result"] as const;
+
+const CHECK_ICON: Record<CheckOutcome, React.ReactNode> = {
+  pass: <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" />,
+  warn: <AlertTriangle className="mt-0.5 h-4 w-4 text-warning" />,
+  fail: <XCircle className="mt-0.5 h-4 w-4 text-destructive" />,
+};
+
+const OUTCOME_COPY = {
+  verified: { title: "verified", state: "verified" as const, tone: "text-success" },
+  partial: { title: "partly evidenced", state: "needs-evidence" as const, tone: "text-warning-foreground" },
+  not_verified: { title: "not verified yet", state: "needs-evidence" as const, tone: "text-destructive" },
+};
 
 function VerifyFlow() {
   const { skill: presetSkill } = useSearch({ from: "/verify" });
@@ -72,8 +95,13 @@ function VerifyFlow() {
   const [skillId, setSkillId] = useState<string>("");
   const [source, setSource] = useState<VerificationMethod | "">("");
   const [url, setUrl] = useState("");
-  const [done, setDone] = useState<number>(-1);
+  const [notes, setNotes] = useState("");
+  const [tick, setTick] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<VerificationAnalysis | null>(null);
   const [record, setRecord] = useState<VerificationRecord | null>(null);
+  const run = useServerFn(analyzeEvidence);
+  const started = useRef(false);
 
   useEffect(() => {
     const s = getSkills();
@@ -89,24 +117,31 @@ function VerifyFlow() {
 
   const skill = skills.find((s) => s.id === skillId);
 
-  // Analysis animation
-  useEffect(() => {
-    if (step !== 3) return;
-    setDone(-1);
-    let i = 0;
-    const t = setInterval(() => {
-      setDone(i);
-      i += 1;
-      if (i >= ANALYSIS_STEPS.length) {
-        clearInterval(t);
-        setTimeout(() => setStep(4), 700);
-      }
-    }, 750);
-    return () => clearInterval(t);
-  }, [step]);
+  const startAnalysis = async () => {
+    if (!skill || !source || started.current) return;
+    started.current = true;
+    setError(null);
+    setAnalysis(null);
+    setTick(0);
+    setStep(3);
+    const timer = setInterval(() => setTick((t) => Math.min(t + 1, RUNNING_STEPS.length - 1)), 1400);
+    try {
+      const result = await run({
+        data: { skillName: skill.name, method: source, evidenceUrl: url.trim() || undefined, notes: notes.trim() || undefined },
+      });
+      setAnalysis(result);
+      setStep(4);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "The analysis could not be completed.");
+      setStep(2);
+    } finally {
+      clearInterval(timer);
+      started.current = false;
+    }
+  };
 
   const finish = () => {
-    if (!skill || !source) return;
+    if (!skill || !source || !analysis) return;
     const student = getStudent();
     const token = `${skill.name.toLowerCase().replace(/[^a-z]/g, "")}-${Date.now().toString(36)}`;
     const rec: VerificationRecord = {
@@ -116,27 +151,37 @@ function VerifyFlow() {
       skillName: skill.name,
       studentName: student?.name ?? "Alex Rivera",
       method: source,
-      outcome: "verified",
-      evidenceSummary: url || "Project submitted in-platform",
-      timestamp: new Date().toISOString(),
-      reason: "Multiple independent signals agreed: original work, consistent style, tests passing.",
-      signals: [
-        { type: "commit_pattern", label: "Commit pattern", outcome: "pass", strength: 0.85, detail: ANALYSIS_STEPS[0].detail },
-        { type: "originality_check", label: "Code originality", outcome: "pass", strength: 0.9, detail: ANALYSIS_STEPS[1].detail },
-        { type: "style_consistency", label: "Style consistency", outcome: "pass", strength: 0.78, detail: ANALYSIS_STEPS[2].detail },
-        { type: "graded_project", label: "Tests & rubric", outcome: "pass", strength: 0.88, detail: ANALYSIS_STEPS[3].detail },
-      ],
+      outcome: analysis.outcome,
+      evidenceSummary: analysis.repo ? `${analysis.repo.fullName} — ${analysis.repo.commits} commits, ${analysis.repo.files} files` : url || "No inspectable evidence supplied",
+      timestamp: analysis.analysedAt,
+      reason: analysis.reason,
+      signals: analysis.checks.map((c) => ({
+        type: c.id as SignalType,
+        label: c.label,
+        outcome: c.outcome,
+        strength: c.strength,
+        detail: c.detail,
+      })),
+      analysis: {
+        source: analysis.source,
+        overall: analysis.overall,
+        repo: analysis.repo as unknown as Record<string, unknown> | undefined,
+        dimensions: analysis.dimensions,
+        facts: Object.fromEntries(analysis.checks.map((c) => [c.label, c.facts])),
+        warnings: analysis.warnings,
+      },
     };
     upsertRecord(rec);
+    const verified = analysis.outcome === "verified";
     const next = skills.map((s) =>
       s.id === skill.id
         ? {
             ...s,
-            status: "verified" as const,
+            status: (verified ? "verified" : "needs-evidence") as Skill["status"],
             source: "project" as const,
-            lastVerifiedAt: rec.timestamp,
-            confidenceLow: 70,
-            confidenceHigh: 83,
+            lastVerifiedAt: verified ? rec.timestamp : s.lastVerifiedAt,
+            confidenceLow: Math.max(0, analysis.overall - 7),
+            confidenceHigh: Math.min(100, analysis.overall + 6),
             verificationMethod: source,
             verificationRecordId: rec.id,
           }
@@ -144,10 +189,14 @@ function VerifyFlow() {
     );
     saveSkills(next);
     setSkills(next);
-    pushActivity({ reason: `${skill.name} verified`, detail: `via ${source.replace(/-/g, " ")}` });
+    pushActivity({
+      reason: `${skill.name} ${verified ? "verified" : "analysed"}`,
+      detail: `${analysis.checks.filter((c) => c.outcome === "pass").length}/${analysis.checks.length} checks passed`,
+    });
     setRecord(rec);
     setStep(5);
-    toast.success(`${skill.name} is now verified`);
+    if (verified) toast.success(`${skill.name} is now verified`);
+    else toast.warning(`${skill.name} needs stronger evidence`);
   };
 
   return (
@@ -156,7 +205,7 @@ function VerifyFlow() {
         <header className="space-y-2">
           <h1 className="font-display text-3xl font-bold tracking-tight">Verify a skill</h1>
           <p className="text-muted-foreground">
-            Six visible steps. You see exactly what we check and why the result came out the way it did.
+            We read your actual repository — commits, tests, CI results, README and code — and show every check we ran.
           </p>
         </header>
 
@@ -205,11 +254,9 @@ function VerifyFlow() {
 
           {step === 1 && (
             <div className="space-y-3">
-              <h2 className="font-display text-xl font-bold">
-                How do you want to prove {skill?.name}?
-              </h2>
+              <h2 className="font-display text-xl font-bold">How do you want to prove {skill?.name}?</h2>
               <p className="text-sm text-muted-foreground">
-                All five carry the same weight. Pick whatever reflects your real work.
+                Whichever you pick, link the public repository behind the work — that is what we can actually inspect.
               </p>
               {SOURCES.map((s) => (
                 <button
@@ -242,15 +289,25 @@ function VerifyFlow() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
+              <Textarea
+                placeholder="Optional: what did you build, and which parts did you write yourself?"
+                value={notes}
+                rows={3}
+                onChange={(e) => setNotes(e.target.value)}
+              />
               <p className="text-sm text-muted-foreground">
-                We only read what you link. Nothing is published without you sharing it.
+                We read only the public repository you link. Without a repository we can't run any checks, and the skill
+                stays a claim.
               </p>
+              {error && (
+                <p className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>
+              )}
               <div className="flex gap-2">
                 <Button variant="ghost" className="rounded-full" onClick={() => setStep(1)}>
                   <ArrowLeft className="mr-1 h-4 w-4" /> Back
                 </Button>
-                <Button className="rounded-full" onClick={() => setStep(3)}>
-                  Start analysis <ArrowRight className="ml-1 h-4 w-4" />
+                <Button className="rounded-full" onClick={startAnalysis}>
+                  Run the checks <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -262,53 +319,97 @@ function VerifyFlow() {
                 <ScanSearch className="h-5 w-5 text-primary" /> Analysing your evidence
               </h2>
               <ul className="space-y-2">
-                {ANALYSIS_STEPS.map((a, i) => (
+                {RUNNING_STEPS.map((label, i) => (
                   <li
-                    key={a.label}
+                    key={label}
                     className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/60 px-4 py-3"
                   >
-                    {i <= done ? (
+                    {i < tick ? (
                       <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" />
                     ) : (
                       <Loader2 className="mt-0.5 h-4 w-4 animate-spin text-muted-foreground" />
                     )}
-                    <span>
-                      <span className="block text-sm font-medium">{a.label}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {i <= done ? a.detail : "waiting…"}
-                      </span>
-                    </span>
+                    <span className="text-sm font-medium">{label}</span>
                   </li>
                 ))}
               </ul>
+              <p className="text-xs text-muted-foreground">
+                This runs against the live repository, so it can take up to a minute.
+              </p>
             </div>
           )}
 
-          {step === 4 && (
-            <div className="space-y-4">
+          {step === 4 && analysis && (
+            <div className="space-y-5">
               <h2 className="flex items-center gap-2 font-display text-xl font-bold">
-                <FlaskConical className="h-5 w-5 text-primary" /> Assessment
+                <FlaskConical className="h-5 w-5 text-primary" /> What we found
               </h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  { d: "Correctness", v: 94 },
-                  { d: "Readability", v: 88 },
-                  { d: "Testing", v: 90 },
-                  { d: "Originality", v: 92 },
-                ].map((x) => (
-                  <div key={x.d} className="rounded-2xl border border-border/60 bg-background/60 p-4">
-                    <div className="flex items-center justify-between text-sm font-medium">
-                      <span>{x.d}</span>
-                      <span className="tabular-nums">{x.v}%</span>
-                    </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full gradient-brand" style={{ width: `${x.v}%` }} />
-                    </div>
+
+              {analysis.repo && (
+                <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3 text-sm">
+                  <a href={analysis.repo.url} target="_blank" rel="noreferrer" className="font-medium text-primary">
+                    {analysis.repo.fullName}
+                  </a>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {analysis.repo.commits} commits · {analysis.repo.files} files · {analysis.repo.testFiles.length} test
+                    files · CI {analysis.repo.latestCiConclusion ?? "not run"} · {analysis.repo.language ?? "mixed"}
                   </div>
+                </div>
+              )}
+
+              <ul className="space-y-2">
+                {analysis.checks.map((c) => (
+                  <li key={c.id} className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      {CHECK_ICON[c.outcome]}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between text-sm font-medium">
+                          <span>{c.label}</span>
+                          <span className="tabular-nums text-xs text-muted-foreground">
+                            {Math.round(c.strength * 100)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{c.detail}</p>
+                        <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground/80">
+                          {c.facts.map((f) => (
+                            <li key={f}>· {f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
+
+              {analysis.dimensions.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {analysis.dimensions.map((x) => (
+                    <div key={x.dimension} className="rounded-2xl border border-border/60 bg-background/60 p-4">
+                      <div className="flex items-center justify-between text-sm font-medium">
+                        <span>{x.dimension}</span>
+                        <span className="tabular-nums">{x.score}%</span>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full gradient-brand" style={{ width: `${x.score}%` }} />
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">{x.note}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {analysis.warnings.length > 0 && (
+                <ul className="space-y-1 text-xs text-muted-foreground">
+                  {analysis.warnings.map((w) => (
+                    <li key={w} className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 text-warning" /> {w}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               <Button className="rounded-full" onClick={finish}>
-                See verification result <ArrowRight className="ml-1 h-4 w-4" />
+                Save this to my evidence record <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           )}
@@ -316,16 +417,22 @@ function VerifyFlow() {
           {step === 5 && record && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-6 w-6 text-success" />
-                <h2 className="font-display text-xl font-bold">{record.skillName} verified</h2>
-                <SkillStatusBadge state="verified" />
+                <ShieldCheck className={`h-6 w-6 ${OUTCOME_COPY[record.outcome].tone}`} />
+                <h2 className="font-display text-xl font-bold">
+                  {record.skillName} {OUTCOME_COPY[record.outcome].title}
+                </h2>
+                <SkillStatusBadge state={OUTCOME_COPY[record.outcome].state} />
               </div>
+              <p className="text-sm text-muted-foreground">{record.reason}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
-                  { k: "Projects analysed", v: String(Math.max(1, projectsForSkill(record.skillName).length)) },
-                  { k: "Skill level", v: "Working" },
-                  { k: "Confidence", v: "70–83%" },
-                  { k: "Verified on", v: new Date(record.timestamp).toLocaleDateString() },
+                  { k: "Checks run", v: String(record.signals.length) },
+                  { k: "Checks passed", v: String(record.signals.filter((s) => s.outcome === "pass").length) },
+                  {
+                    k: "Confidence",
+                    v: `${Math.max(0, (record.analysis?.overall ?? 0) - 7)}–${Math.min(100, (record.analysis?.overall ?? 0) + 6)}%`,
+                  },
+                  { k: "Analysed on", v: new Date(record.timestamp).toLocaleDateString() },
                 ].map((x) => (
                   <div key={x.k} className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
                     <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{x.k}</div>
@@ -335,12 +442,15 @@ function VerifyFlow() {
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Capabilities demonstrated
+                  Checks written to your evidence record
                 </div>
                 <ul className="mt-2 space-y-1 text-sm">
                   {record.signals.map((s) => (
-                    <li key={s.type} className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-success" /> {s.label} — {s.detail}
+                    <li key={s.type} className="flex items-start gap-2">
+                      {CHECK_ICON[s.outcome as CheckOutcome] ?? <CheckCircle2 className="mt-0.5 h-4 w-4" />}
+                      <span>
+                        {s.label} — {s.detail}
+                      </span>
                     </li>
                   ))}
                 </ul>
