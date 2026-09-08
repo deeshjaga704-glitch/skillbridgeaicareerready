@@ -79,6 +79,13 @@ async function gh<T>(path: string): Promise<T | null> {
   return (await res.json()) as T;
 }
 
+function b64ToText(b64: string): string {
+  const bin = atob(b64.replace(/\s/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 function parseRepo(url: string): { owner: string; repo: string } | null {
   const m = url.trim().match(/github\.com[/:]([^/\s]+)\/([^/\s#?]+)/i);
   if (!m) return null;
@@ -261,9 +268,7 @@ export const analyzeEvidence = createServerFn({ method: "POST" })
     const commits = commitsRaw ?? [];
     const files = (treeRaw?.tree ?? []).filter((t) => t.type === "blob");
     const paths = files.map((f) => f.path);
-    const readme = readmeRaw?.content
-      ? decodeURIComponent(escape(atob(readmeRaw.content.replace(/\n/g, "")))).slice(0, 20000)
-      : "";
+    const readme = readmeRaw?.content ? b64ToText(readmeRaw.content).slice(0, 20000) : "";
 
     const testFiles = paths.filter((p) => TEST_RE.test(p) || TEST_FILE_RE.test(p));
     const ciWorkflows = paths.filter((p) => /^\.github\/workflows\/.+\.ya?ml$/i.test(p));
@@ -430,7 +435,7 @@ export const analyzeEvidence = createServerFn({ method: "POST" })
         );
         if (blob?.content) {
           try {
-            const text = atob(blob.content.replace(/\n/g, "")).slice(0, 8000);
+            const text = b64ToText(blob.content).slice(0, 8000);
             contents.push(`--- ${p} ---\n${text}`);
           } catch {
             /* binary or oversized file — skip */
