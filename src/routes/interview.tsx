@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Send, Bot, User, RefreshCw } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Send, Bot, User, RefreshCw, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { getSkills, getStudent, type Skill } from "@/lib/skillbridge-store";
+import { askMentor, type MentorMessage } from "@/lib/mentor.functions";
 
 export const Route = createFileRoute("/interview")({
   head: () => ({
@@ -23,57 +24,21 @@ export const Route = createFileRoute("/interview")({
 
 type Msg = { id: string; from: "coach" | "you"; text: string; feedback?: string[] };
 
-function questionsFor(skills: Skill[], role?: string): string[] {
-  const verified = skills.filter((s) => s.status === "verified");
-  const claimed = skills.filter((s) => s.status === "claimed");
-  const qs = [
-    `Let's warm up. Why ${role || "this role"}, and what pulled you toward it?`,
-    ...verified.slice(0, 3).map((s) => `Walk me through something you built with ${s.name}. What was the hardest part?`),
-    ...claimed.slice(0, 2).map((s) => `You list ${s.name} but it isn't verified yet. How would you describe your level honestly?`),
-    "Tell me about a time your first approach didn't work. What did you change?",
-    "What's something you'd like to get much better at in your first year on the job?",
-  ];
-  return qs;
-}
-
-function feedbackFor(answer: string): string[] {
-  const words = answer.trim().split(/\s+/).filter(Boolean).length;
-  const out: string[] = [];
-  out.push(
-    words < 25
-      ? "Add a bit more detail — interviewers want the situation, what you did, and how it turned out."
-      : "Good length — you gave enough context to follow the story.",
-  );
-  out.push(
-    /\b(i|my)\b/i.test(answer)
-      ? "Nice use of \"I\" — it's clear what you personally did."
-      : "Try saying \"I\" more often so your own contribution stands out.",
-  );
-  out.push(
-    /\d/.test(answer)
-      ? "The concrete numbers make this believable."
-      : "One number (users, rows, minutes saved) would make this land harder.",
-  );
-  return out;
-}
-
 function InterviewPage() {
+  const ask = useServerFn(askMentor);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState("");
-  const [qIndex, setQIndex] = useState(0);
-  const [questions, setQuestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const qs = questionsFor(getSkills(), getStudent()?.targetRole);
-    setQuestions(qs);
     setMessages([
       {
         id: "intro",
         from: "coach",
-        text: "Hi! This is practice, not a test — nobody sees your answers. Take your time.",
+        text: "Hi! I’m your evidence-aware career mentor. Ask about your target role, skill gaps, or what to practise next.",
       },
-      { id: "q0", from: "coach", text: qs[0] },
     ]);
   }, []);
 
@@ -81,32 +46,47 @@ function InterviewPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = () => {
+  const send = async () => {
     const text = draft.trim();
-    if (!text) return;
-    const next: Msg[] = [
-      ...messages,
-      { id: crypto.randomUUID(), from: "you", text },
-      { id: crypto.randomUUID(), from: "coach", text: "Here's what I noticed:", feedback: feedbackFor(text) },
-    ];
-    const ni = qIndex + 1;
-    if (ni < questions.length) {
-      next.push({ id: crypto.randomUUID(), from: "coach", text: questions[ni] });
-      setQIndex(ni);
-    } else {
-      next.push({
-        id: crypto.randomUUID(),
-        from: "coach",
-        text: "That's the full set — you handled it well. Run it again any time before a real interview.",
-      });
-    }
-    setMessages(next);
+    if (!text || loading) return;
+    setError(null);
     setDraft("");
+    setMessages((current) => [...current, { id: crypto.randomUUID(), from: "you", text }]);
+    setLoading(true);
+    try {
+      const recentMessages: MentorMessage[] = messages.slice(-8).map((message) => ({
+        role: message.from === "you" ? "user" : "assistant",
+        content: message.text,
+      }));
+      const response = await ask({ data: { userMessage: text, recentMessages } });
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          from: "coach",
+          text: response.message,
+          feedback: [
+            ...response.suggestedActions.map((action) => `Next action: ${action}`),
+            ...response.referencedEvidence.map((evidence) => `Evidence: ${evidence}`),
+          ],
+        },
+      ]);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "The mentor could not respond.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const restart = () => {
-    setQIndex(0);
-    setMessages([{ id: "q0", from: "coach", text: questions[0] }]);
+    setError(null);
+    setMessages([
+      {
+        id: "intro",
+        from: "coach",
+        text: "Hi! I’m your evidence-aware career mentor. Ask about your target role, skill gaps, or what to practise next.",
+      },
+    ]);
   };
 
   return (
@@ -154,6 +134,7 @@ function InterviewPage() {
         </div>
 
         <div className="space-y-3">
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -162,8 +143,8 @@ function InterviewPage() {
             className="rounded-2xl"
           />
           <div className="flex flex-wrap gap-2">
-            <Button onClick={send} className="rounded-full">
-              <Send className="mr-1 h-4 w-4" /> Send answer
+            <Button onClick={() => void send()} disabled={loading} className="rounded-full">
+              {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />} Send answer
             </Button>
             <Button variant="secondary" onClick={restart} className="rounded-full">
               <RefreshCw className="mr-1 h-4 w-4" /> Start over
