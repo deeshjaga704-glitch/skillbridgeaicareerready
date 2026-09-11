@@ -20,7 +20,6 @@ import {
   computeReadiness,
   getActivity,
   getRecords,
-  getSkills,
   getStudent,
   getSmoothedScore,
   saveSmoothedScore,
@@ -39,6 +38,7 @@ import {
   skillState,
   freshnessLabel,
 } from "@/lib/skillbridge-evidence";
+import { getAuthenticatedProfile, getAuthenticatedSkillProgress } from "@/lib/supabase/profile";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -86,32 +86,76 @@ function Dashboard() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [openWhy, setOpenWhy] = useState(false);
 
   useEffect(() => {
-    setStudent(
-      getStudent() ?? {
-        name: "Alex Rivera",
-        yearOfStudy: "Third year",
-        targetRole: "Software Engineer",
-        createdAt: new Date().toISOString(),
-      },
-    );
-    setSkills(getSkills());
-    setActivity(getActivity());
-    setReady(true);
+    let cancelled = false;
+
+    async function loadDashboard() {
+      try {
+        const { user, student: profileStudent } = await getAuthenticatedProfile();
+        if (cancelled) return;
+
+        const cachedStudent = getStudent();
+        setStudent(
+          profileStudent ??
+            (cachedStudent
+              ? { ...cachedStudent, email: user.email }
+              : {
+                  name: user.email ?? "Your profile",
+                  email: user.email,
+                  yearOfStudy: "",
+                  targetRole: "Software Engineer",
+                  createdAt: user.created_at,
+                }),
+        );
+        setSkills(await getAuthenticatedSkillProgress());
+        setActivity(getActivity());
+        setLoadError(null);
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "We couldn't load your account data.");
+        }
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    }
+
+    void loadDashboard();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const target = useMemo(() => computeReadiness(skills), [skills]);
-  const smoothed = useSmoothedRange({ low: target.low, high: target.high });
   const role = student?.targetRole;
   const factors = useMemo(() => scoreFactors(skills, role), [skills, role]);
+  const readinessFactors = useMemo(
+    () => factors.map(({ value, max }) => ({ value, max })),
+    [factors],
+  );
+  const readiness = useMemo(
+    () => computeReadiness(skills, readinessFactors),
+    [skills, readinessFactors],
+  );
+  const smoothed = useSmoothedRange({ low: readiness.low, high: readiness.high });
   const roleFit = useMemo(() => roleReadiness(skills, role), [skills, role]);
   const actions = useMemo(() => rankedActions(skills, role), [skills, role]);
   const top = actions[0];
   const lastCalc = activity[0]?.at ?? new Date().toISOString();
 
-  if (!ready) return null;
+  if (!ready) {
+    return <div className="p-8 text-sm text-muted-foreground">Loading your dashboard...</div>;
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
+        <h1 className="font-display text-xl font-bold">We couldn't load your dashboard</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
+      </div>
+    );
+  }
 
   const share = async (skill: Skill) => {
     const rec = getRecords().find((r) => r.id === skill.verificationRecordId);

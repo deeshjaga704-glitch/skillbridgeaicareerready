@@ -23,7 +23,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
-  getSkills,
   getStudent,
   saveSkills,
   upsertRecord,
@@ -40,6 +39,11 @@ import {
   type VerificationAnalysis,
   type CheckOutcome,
 } from "@/lib/verification-analysis.functions";
+import {
+  getAuthenticatedSkillProgress,
+  persistVerificationRecord,
+  persistVerifiedSkillProgress,
+} from "@/lib/supabase/profile";
 
 export const Route = createFileRoute("/verify")({
   head: () => ({
@@ -104,15 +108,34 @@ function VerifyFlow() {
   const started = useRef(false);
 
   useEffect(() => {
-    const s = getSkills();
-    setSkills(s);
-    if (presetSkill) {
-      const found = s.find((x) => x.name.toLowerCase() === presetSkill.toLowerCase());
-      if (found) {
-        setSkillId(found.id);
-        setStep(1);
+    let cancelled = false;
+
+    async function loadSkills() {
+      try {
+        const loadedSkills = await getAuthenticatedSkillProgress();
+        if (cancelled) return;
+
+        setSkills(loadedSkills);
+        if (presetSkill) {
+          const found = loadedSkills.find((x) => x.name.toLowerCase() === presetSkill.toLowerCase());
+          if (found) {
+            setSkillId(found.id);
+            setStep(1);
+          } else {
+            setError(`The skill "${presetSkill}" is not present in your Supabase skill progress.`);
+          }
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "We couldn't load your skills.");
+        }
       }
     }
+
+    void loadSkills();
+    return () => {
+      cancelled = true;
+    };
   }, [presetSkill]);
 
   const skill = skills.find((s) => s.id === skillId);
@@ -140,8 +163,23 @@ function VerifyFlow() {
     }
   };
 
-  const finish = () => {
+  const finish = async () => {
     if (!skill || !source || !analysis) return;
+    const verified = analysis.outcome === "verified";
+
+    try {
+      if (verified) {
+        await persistVerifiedSkillProgress(skill.name, analysis.analysedAt);
+      }
+    } catch (persistenceError) {
+      setError(
+        persistenceError instanceof Error
+          ? persistenceError.message
+          : "We couldn't save the verified skill to Supabase.",
+      );
+      return;
+    }
+
     const student = getStudent();
     const token = `${skill.name.toLowerCase().replace(/[^a-z]/g, "")}-${Date.now().toString(36)}`;
     const rec: VerificationRecord = {
@@ -149,6 +187,7 @@ function VerifyFlow() {
       token,
       skillId: skill.id,
       skillName: skill.name,
+      evidenceUrl: url.trim() || undefined,
       studentName: student?.name ?? "Alex Rivera",
       method: source,
       outcome: analysis.outcome,
@@ -171,8 +210,20 @@ function VerifyFlow() {
         warnings: analysis.warnings,
       },
     };
+
+    try {
+      await persistVerificationRecord(rec);
+    } catch (persistenceError) {
+      setError(
+        persistenceError instanceof Error
+          ? persistenceError.message
+          : "We couldn't save the verification record to Supabase.",
+      );
+      setStep(2);
+      return;
+    }
+
     upsertRecord(rec);
-    const verified = analysis.outcome === "verified";
     const next = skills.map((s) =>
       s.id === skill.id
         ? {
@@ -188,7 +239,7 @@ function VerifyFlow() {
         : s,
     );
     saveSkills(next);
-    setSkills(next);
+    setSkills(verified ? await getAuthenticatedSkillProgress() : next);
     pushActivity({
       reason: `${skill.name} ${verified ? "verified" : "analysed"}`,
       detail: `${analysis.checks.filter((c) => c.outcome === "pass").length}/${analysis.checks.length} checks passed`,
@@ -207,6 +258,9 @@ function VerifyFlow() {
           <p className="text-muted-foreground">
             We read your actual repository — commits, tests, CI results, README and code — and show every check we ran.
           </p>
+          {error && step === 0 && (
+            <p className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>
+          )}
         </header>
 
         {/* Stepper */}

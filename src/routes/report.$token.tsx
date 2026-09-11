@@ -11,6 +11,7 @@ import {
 } from "@/lib/skillbridge-store";
 import { SkillStatusBadge } from "@/components/skill-status-badge";
 import { buildReport, freshnessLabel, type EvidenceReport } from "@/lib/skillbridge-evidence";
+import { getAuthenticatedVerificationRecordByToken } from "@/lib/supabase/profile";
 
 export const Route = createFileRoute("/report/$token")({
   head: ({ params }) => ({
@@ -38,15 +39,35 @@ function ReportPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const rec = getRecordByToken(token);
-    setRecord(rec);
-    if (rec) {
-      const skill: Skill =
-        getSkills().find((s) => s.id === rec.skillId) ??
-        ({ id: rec.skillId, name: rec.skillName, status: "verified", source: "project", lastVerifiedAt: rec.timestamp, confidenceLow: 70, confidenceHigh: 83 } as Skill);
-      setReport(buildReport(skill));
+    let cancelled = false;
+
+    async function loadReport() {
+      const supabaseRecord = await getAuthenticatedVerificationRecordByToken(token).catch(() => null);
+      const rec = supabaseRecord ?? getRecordByToken(token);
+      if (cancelled) return;
+
+      setRecord(rec);
+      if (rec) {
+        const skill: Skill =
+          getSkills().find((s) => s.id === rec.skillId) ??
+          ({
+            id: rec.skillId,
+            name: rec.skillName,
+            status: rec.outcome === "verified" ? "verified" : "needs-evidence",
+            source: "project",
+            lastVerifiedAt: rec.outcome === "verified" ? rec.timestamp : undefined,
+            confidenceLow: 70,
+            confidenceHigh: 83,
+          } as Skill);
+        setReport(buildReport(skill));
+      }
+      setReady(true);
     }
-    setReady(true);
+
+    void loadReport();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   if (!ready) return null;

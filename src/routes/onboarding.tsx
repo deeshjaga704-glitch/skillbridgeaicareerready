@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ResumeSkillExtraction } from "@/components/resume-skill-extraction";
 import { saveStudent } from "@/lib/skillbridge-store";
+import { saveOnboardingProfile } from "@/lib/supabase/profile";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/onboarding")({
@@ -49,20 +50,40 @@ function Onboarding() {
 
   const canSubmit = name.trim().length > 1 && year && (roleChoice || customRole.trim());
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
-    const targetRole = customRole.trim() || roleChoice;
-    saveStudent({
-      name: name.trim(),
-      yearOfStudy: year,
-      targetRole,
-      resumeFileName: resumeName ?? undefined,
-      createdAt: new Date().toISOString(),
-    });
-    toast.success("You're all set", { description: `Welcome, ${name.split(" ")[0]}.` });
-    setTimeout(() => navigate({ to: "/dashboard" }), 300);
+
+    try {
+      const targetRole = customRole.trim() || roleChoice;
+
+      await saveOnboardingProfile({
+        name: name.trim(),
+        educationLevel: year,
+        currentJobRole: targetRole,
+        targetRole,
+      });
+
+      saveStudent({
+        name: name.trim(),
+        yearOfStudy: year,
+        targetRole,
+        resumeFileName: resumeName ?? undefined,
+        createdAt: new Date().toISOString(),
+      });
+
+      toast.success("You're all set", { description: `Welcome, ${name.split(" ")[0]}.` });
+      navigate({ to: "/dashboard" });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't save your profile. Please try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

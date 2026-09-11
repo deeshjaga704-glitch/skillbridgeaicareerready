@@ -54,6 +54,15 @@ export function skillLevel(s: Skill): SkillLevel {
   return "Foundational";
 }
 
+/** Progress contributes to matching, but never changes the evidence status. */
+export function skillMatchScore(skill: Skill, requiredSkill: string): number {
+  if (skill.name.toLowerCase() !== requiredSkill.toLowerCase()) return 0;
+  if (skillState(skill) === "verified") return 1;
+  if (skill.proficiency === undefined || skill.targetProficiency === undefined) return 0;
+  if (skill.targetProficiency <= 0) return 0;
+  return Math.min(1, Math.max(0, skill.proficiency / skill.targetProficiency));
+}
+
 /* ---------------------------------- Projects --------------------------------- */
 
 export type ProjectEvidence = {
@@ -183,9 +192,14 @@ export function scoreFactors(skills: Skill[], role?: string): ScoreFactor[] {
   const reqs = requirementsForRole(role);
   const verified = skills.filter((s) => skillState(s) === "verified");
   const core = reqs.filter((r) => r.importance === "core");
-  const coreCovered = core.filter((r) =>
-    verified.some((v) => v.name.toLowerCase() === r.skill.toLowerCase()),
-  ).length;
+  const coreMatch = core.reduce(
+    (total, requirement) =>
+      total + Math.max(
+        ...skills.map((skill) => skillMatchScore(skill, requirement.skill)),
+        0,
+      ),
+    0,
+  );
   const tests = PROJECT_EVIDENCE.reduce((a, p) => a + p.tests.passing, 0);
   const testTotal = PROJECT_EVIDENCE.reduce((a, p) => a + p.tests.count, 0) || 1;
   return [
@@ -215,9 +229,9 @@ export function scoreFactors(skills: Skill[], role?: string): ScoreFactor[] {
     },
     {
       label: "Job-role match",
-      value: core.length ? Math.round((coreCovered / core.length) * 10) : 0,
+      value: core.length ? Math.round((coreMatch / core.length) * 10) : 0,
       max: 10,
-      why: `${coreCovered} of ${core.length} core requirements for your target role`,
+      why: `${Math.round((coreMatch / (core.length || 1)) * 100)}% progress across ${core.length} core requirements for your target role`,
     },
   ];
 }
@@ -226,13 +240,19 @@ export function scoreFactors(skills: Skill[], role?: string): ScoreFactor[] {
 
 export function roleReadiness(skills: Skill[], role?: string) {
   const reqs = requirementsForRole(role);
-  const verified = new Set(
-    skills.filter((s) => skillState(s) === "verified").map((s) => s.name.toLowerCase()),
+  const matchScores = reqs.map((requirement) =>
+    Math.max(
+      ...skills.map((skill) => skillMatchScore(skill, requirement.skill)),
+      0,
+    ),
   );
-  const missing = reqs.filter((r) => !verified.has(r.skill.toLowerCase()));
+  const missing = reqs.filter((_, index) => matchScores[index] === 0);
   const weight = (r: { importance: string }) => (r.importance === "core" ? 2 : 1);
   const total = reqs.reduce((a, r) => a + weight(r), 0);
-  const got = reqs.filter((r) => verified.has(r.skill.toLowerCase())).reduce((a, r) => a + weight(r), 0);
+  const got = reqs.reduce(
+    (totalScore, requirement, index) => totalScore + matchScores[index] * weight(requirement),
+    0,
+  );
   const pct = Math.round((got / total) * 100);
   return { reqs, missing, pct, low: Math.max(0, pct - 6), high: Math.min(100, pct + 5) };
 }

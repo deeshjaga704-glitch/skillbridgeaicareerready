@@ -6,12 +6,22 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { getAuthenticatedSession } from "@/lib/supabase/auth";
+
+const PUBLIC_PATHS = ["/", "/auth", "/report/", "/v/", "/sitemap.xml"];
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some((path) =>
+    path.endsWith("/") ? pathname.startsWith(path) : pathname === path,
+  );
+}
 
 function NotFoundComponent() {
   return (
@@ -35,7 +45,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -74,6 +84,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: async ({ location }) => {
+    if (isPublicPath(location.pathname)) return;
+
+    const user = await getAuthenticatedSession();
+    if (!user) {
+      throw redirect({ to: "/auth" });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

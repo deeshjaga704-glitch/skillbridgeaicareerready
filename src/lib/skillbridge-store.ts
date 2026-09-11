@@ -10,7 +10,11 @@ export type Skill = {
   name: string;
   status: SkillStatus;
   source: "resume" | "manual" | "project";
-  category?: SkillCategory;
+  category?: SkillCategory | string;
+  proficiency?: number;
+  targetProficiency?: number;
+  evidenceCount?: number;
+  lastPracticedAt?: string;
   extractedAt?: string; // ISO — when it entered the inventory
   lastVerifiedAt?: string; // ISO
   confidenceLow?: number;
@@ -35,6 +39,11 @@ export type ReadinessScore = {
   verifiedProjects: number;
 };
 
+export type ReadinessFactor = {
+  value: number;
+  max: number;
+};
+
 const STORAGE_KEY = "skillbridge:student:v1";
 const SKILLS_KEY = "skillbridge:skills:v1";
 const CONN_KEY = "skillbridge:connections:v2";
@@ -43,6 +52,15 @@ const RECORDS_KEY = "skillbridge:records:v1";
 const APPEALS_KEY = "skillbridge:appeals:v1";
 const HISTORY_KEY = "skillbridge:history:v1";
 const SCORE_KEY = "skillbridge:score:v1";
+let activeUserId: string | null = null;
+
+export function setActiveUserId(userId: string | null) {
+  activeUserId = userId;
+}
+
+function storageKey(key: string) {
+  return activeUserId ? `skillbridge:user:${activeUserId}:${key}` : key;
+}
 
 export type ConnectionId = "github" | "leetcode" | "hackerrank" | "linkedin";
 export type ConnectionQuality = "official-api" | "best-effort" | "manual";
@@ -69,14 +87,14 @@ export const DEFAULT_CONNECTIONS: Connection[] = [
 export function getConnections(): Connection[] {
   if (typeof window === "undefined") return DEFAULT_CONNECTIONS;
   try {
-    const raw = localStorage.getItem(CONN_KEY);
+    const raw = localStorage.getItem(storageKey(CONN_KEY));
     return raw ? (JSON.parse(raw) as Connection[]) : DEFAULT_CONNECTIONS;
   } catch {
     return DEFAULT_CONNECTIONS;
   }
 }
 export function saveConnections(c: Connection[]) {
-  localStorage.setItem(CONN_KEY, JSON.stringify(c));
+  localStorage.setItem(storageKey(CONN_KEY), JSON.stringify(c));
 }
 
 export type ActivityItem = {
@@ -89,7 +107,7 @@ export type ActivityItem = {
 export function getActivity(): ActivityItem[] {
   if (typeof window === "undefined") return DEFAULT_ACTIVITY;
   try {
-    const raw = localStorage.getItem(ACTIVITY_KEY);
+    const raw = localStorage.getItem(storageKey(ACTIVITY_KEY));
     return raw ? (JSON.parse(raw) as ActivityItem[]) : DEFAULT_ACTIVITY;
   } catch {
     return DEFAULT_ACTIVITY;
@@ -101,7 +119,7 @@ export function pushActivity(item: Omit<ActivityItem, "id" | "at">) {
     { id: crypto.randomUUID(), at: new Date().toISOString(), ...item },
     ...list,
   ].slice(0, 20);
-  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next));
+  localStorage.setItem(storageKey(ACTIVITY_KEY), JSON.stringify(next));
   return next;
 }
 
@@ -114,7 +132,7 @@ const DEFAULT_ACTIVITY: ActivityItem[] = [
 export function getStudent(): Student | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(STORAGE_KEY));
     return raw ? (JSON.parse(raw) as Student) : null;
   } catch {
     return null;
@@ -122,12 +140,12 @@ export function getStudent(): Student | null {
 }
 
 export function saveStudent(student: Student) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(student));
+  localStorage.setItem(storageKey(STORAGE_KEY), JSON.stringify(student));
 }
 
 export function clearStudent() {
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(SKILLS_KEY);
+  localStorage.removeItem(storageKey(STORAGE_KEY));
+  localStorage.removeItem(storageKey(SKILLS_KEY));
 }
 
 const now = new Date();
@@ -173,6 +191,7 @@ export type VerificationRecord = {
   token: string; // public share token
   skillId: string;
   skillName: string;
+  evidenceUrl?: string;
   studentName: string;
   method: VerificationMethod;
   evidenceSummary: string;
@@ -205,7 +224,7 @@ export const DEFAULT_SKILLS: Skill[] = [
 export function getSkills(): Skill[] {
   if (typeof window === "undefined") return DEFAULT_SKILLS;
   try {
-    const raw = localStorage.getItem(SKILLS_KEY);
+    const raw = localStorage.getItem(storageKey(SKILLS_KEY));
     if (!raw) return DEFAULT_SKILLS;
     return JSON.parse(raw) as Skill[];
   } catch {
@@ -214,7 +233,7 @@ export function getSkills(): Skill[] {
 }
 
 export function saveSkills(skills: Skill[]) {
-  localStorage.setItem(SKILLS_KEY, JSON.stringify(skills));
+  localStorage.setItem(storageKey(SKILLS_KEY), JSON.stringify(skills));
 }
 
 // Verification records
@@ -265,14 +284,14 @@ const DEFAULT_RECORDS: VerificationRecord[] = [
 export function getRecords(): VerificationRecord[] {
   if (typeof window === "undefined") return DEFAULT_RECORDS;
   try {
-    const raw = localStorage.getItem(RECORDS_KEY);
+    const raw = localStorage.getItem(storageKey(RECORDS_KEY));
     return raw ? (JSON.parse(raw) as VerificationRecord[]) : DEFAULT_RECORDS;
   } catch {
     return DEFAULT_RECORDS;
   }
 }
 export function saveRecords(r: VerificationRecord[]) {
-  localStorage.setItem(RECORDS_KEY, JSON.stringify(r));
+  localStorage.setItem(storageKey(RECORDS_KEY), JSON.stringify(r));
 }
 export function getRecordByToken(token: string): VerificationRecord | null {
   return getRecords().find((r) => r.token === token) ?? null;
@@ -302,14 +321,14 @@ export type Appeal = {
 export function getAppeals(): Appeal[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(APPEALS_KEY);
+    const raw = localStorage.getItem(storageKey(APPEALS_KEY));
     return raw ? (JSON.parse(raw) as Appeal[]) : [];
   } catch {
     return [];
   }
 }
 export function saveAppeals(a: Appeal[]) {
-  localStorage.setItem(APPEALS_KEY, JSON.stringify(a));
+  localStorage.setItem(storageKey(APPEALS_KEY), JSON.stringify(a));
 }
 export function submitAppeal(a: Omit<Appeal, "id" | "status" | "submittedAt">) {
   const list = getAppeals();
@@ -331,34 +350,46 @@ export type ScoreSnapshot = {
 export function getScoreHistory(): ScoreSnapshot[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = localStorage.getItem(storageKey(HISTORY_KEY));
     return raw ? (JSON.parse(raw) as ScoreSnapshot[]) : [];
   } catch {
     return [];
   }
 }
 export function saveScoreHistory(h: ScoreSnapshot[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+  localStorage.setItem(storageKey(HISTORY_KEY), JSON.stringify(h));
 }
 
 export function getSmoothedScore(): { low: number; high: number } | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(SCORE_KEY);
+    const raw = localStorage.getItem(storageKey(SCORE_KEY));
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 export function saveSmoothedScore(s: { low: number; high: number }) {
-  localStorage.setItem(SCORE_KEY, JSON.stringify(s));
+  localStorage.setItem(storageKey(SCORE_KEY), JSON.stringify(s));
 }
 
 /**
  * Compute the raw readiness range from skills. Score smoothing is applied
  * separately in the UI so a new signal shifts the number gradually.
  */
-export function computeReadiness(skills: Skill[]): ReadinessScore {
+export function computeReadiness(
+  skills: Skill[],
+  factors?: ReadinessFactor[],
+): ReadinessScore {
+  if (factors) {
+    const score = factors.reduce((total, factor) => total + factor.value, 0);
+    return {
+      low: Math.max(0, Math.round(score) - 6),
+      high: Math.min(100, Math.round(score) + 5),
+      verifiedProjects: skills.filter((s) => s.status === "verified").length,
+    };
+  }
+
   const verified = skills.filter((s) => s.status === "verified");
   const base = Math.min(85, 40 + verified.length * 7);
   return {
@@ -394,17 +425,17 @@ export type ResumeMeta = {
 export function getResumeMeta(): ResumeMeta | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(RESUME_KEY);
+    const raw = localStorage.getItem(storageKey(RESUME_KEY));
     return raw ? (JSON.parse(raw) as ResumeMeta) : null;
   } catch {
     return null;
   }
 }
 export function saveResumeMeta(m: ResumeMeta) {
-  localStorage.setItem(RESUME_KEY, JSON.stringify(m));
+  localStorage.setItem(storageKey(RESUME_KEY), JSON.stringify(m));
 }
 export function clearResumeMeta() {
-  localStorage.removeItem(RESUME_KEY);
+  localStorage.removeItem(storageKey(RESUME_KEY));
 }
 
 /** Remove every skill that came from a resume import (used when deleting a resume). */
