@@ -9,9 +9,8 @@ const MessageInput = z.object({
   content: z.string().min(1).max(2000),
 });
 
-const MentorInput = z.object({
+export const MentorInput = z.object({
   userMessage: z.string().trim().min(1).max(4000),
-  recentMessages: z.array(MessageInput).max(8).default([]),
 });
 
 export type MentorMessage = z.infer<typeof MessageInput>;
@@ -54,6 +53,10 @@ export type MentorResponse = {
   referencedEvidence: string[];
 };
 
+export type PersistedMentorMessage = MentorMessage & {
+  createdAt: string;
+};
+
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
@@ -93,6 +96,14 @@ export function normalizeMentorResponse(value: unknown): MentorResponse {
   };
 }
 
+export function boundMentorHistory(messages: PersistedMentorMessage[]): MentorMessage[] {
+  return messages.slice(-8).map(({ role, content }) => ({ role, content }));
+}
+
+export function conversationOwnership(studentId: string) {
+  return { student_id: studentId };
+}
+
 export function buildMentorContext(input: {
   profile: { name: string; education: string | null; currentRole: string | null };
   careerGoal: string | null;
@@ -125,7 +136,7 @@ export function buildMentorContext(input: {
   };
 }
 
-async function loadMentorContext(userId: string): Promise<MentorContext> {
+async function loadMentorContext(userId: string): Promise<{ studentId: string; context: MentorContext }> {
   const supabase = createServerSupabaseClient();
   const { data: profile, error: profileError } = await supabase
     .from("student_profiles")
@@ -165,25 +176,82 @@ async function loadMentorContext(userId: string): Promise<MentorContext> {
     lastPracticedAt: row.last_practiced_at ?? undefined,
   }));
 
-  return buildMentorContext({
-    profile: {
+  return {
+    studentId: profile.id,
+    context: buildMentorContext({
+      profile: {
       name: profile.name,
       education: profile.education_level,
       currentRole: profile.current_job_role,
-    },
-    careerGoal: goal?.target_role ?? null,
-    skills,
-    verificationSummaries: (records ?? []).map((record) => ({
-      skillName: record.skill_name,
-      outcome: record.outcome,
-      method: record.method,
-      summary: record.evidence_summary,
-      reason: record.reason,
-    })),
-  });
+      },
+      careerGoal: goal?.target_role ?? null,
+      skills,
+      verificationSummaries: (records ?? []).map((record) => ({
+        skillName: record.skill_name,
+        outcome: record.outcome,
+        method: record.method,
+        summary: record.evidence_summary,
+        reason: record.reason,
+      })),
+    }),
+  };
 }
 
-async function callGemini(userMessage: string, recentMessages: MentorMessage[], context: MentorContext): Promise<MentorResponse> {
+async function getOrCreateConversation(supabase: ReturnType<typeof createServerSupabaseClient>, studentId: string): Promise<string> {
+  const ownership = conversationOwnership(studentId);
+  const { data: existing, error: lookupError } = await supabase
+    .from("mentor_conversations")
+    .select("id")
+    .match(ownership)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  if (lookupError) throw lookupError;
+  if (existing) return existing.id;
+
+  const { data: created, error: createError } = await supabase
+    .from("mentor_conversations")
+    .insert({ ...ownership, status: "active" })
+    .select("id")
+    .single();
+  if (createError) throw createError;
+  return created.id;
+}
+
+async function loadPersistedHistory(
+  supabase: ReturnType<typeof createServerSupabaseClient>,
+  conversationId: string,
+): Promise<MentorMessage[]> {
+  const { data, error } = await supabase
+    .from("mentor_messages")
+    .select("role, content, created_at")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: false })
+    .limit(8);
+  if (error) throw error;
+
+  const messages = (data ?? []).reverse().map((message) => ({
+    role: message.role as MentorMessage["role"],
+    content: message.content,
+    createdAt: message.created_at,
+  }));
+  return boundMentorHistory(messages);
+}
+
+async function persistMessage(
+  supabase: ReturnType<typeof createServerSupabaseClient>,
+  conversationId: string,
+  message: MentorMessage,
+) {
+  const { error } = await supabase.from("mentor_messages").insert({
+    conversation_id: conversationId,
+    role: message.role,
+    content: message.content,
+  });
+  if (error) throw error;
+}
+
+async function callGemini(recentMessages: MentorMessage[], context: MentorContext): Promise<MentorResponse> {
   const apiKey = process.env["GEMINI_API_KEY"] ?? process.env["GOOGLE_GENERATIVE_AI_API_KEY"];
   if (!apiKey) throw new Error("AI is not configured. Add GEMINI_API_KEY to your local .env file.");
 
@@ -198,7 +266,7 @@ async function callGemini(userMessage: string, recentMessages: MentorMessage[], 
         contents: [
           {
             role: "user",
-            parts: [{ text: JSON.stringify({ context, recentMessages, userMessage }) }],
+            parts: [{ text: JSON.stringify({ context, recentMessages }) }],
           },
         ],
         generationConfig: {
@@ -221,6 +289,17 @@ export const askMentor = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await getServerAuthenticatedUser();
     if (!user) throw new Error("Please sign in before using the AI mentor.");
-    const context = await loadMentorContext(user.id);
-    return callGemini(data.userMessage, data.recentMessages.slice(-8), context);
+    const supabase = createServerSupabaseClient();
+    try {
+      const { studentId, context } = await loadMentorContext(user.id);
+      const conversationId = await getOrCreateConversation(supabase, studentId);
+      await persistMessage(supabase, conversationId, { role: "user", content: data.userMessage });
+      const history = await loadPersistedHistory(supabase, conversationId);
+      const response = await callGemini(history, context);
+      await persistMessage(supabase, conversationId, { role: "assistant", content: response.message });
+      return response;
+    } catch (error) {
+      console.error("Mentor request failed", error);
+      throw new Error("The mentor could not process your request. Please try again.");
+    }
   });

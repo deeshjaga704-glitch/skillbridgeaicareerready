@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildMentorContext, normalizeMentorResponse } from "@/lib/mentor.functions";
+import {
+  boundMentorHistory,
+  buildMentorContext,
+  conversationOwnership,
+  MentorInput,
+  normalizeMentorResponse,
+} from "@/lib/mentor.functions";
 import type { Skill } from "@/lib/skillbridge-store";
 
 const skills: Skill[] = [
@@ -67,5 +73,31 @@ describe("mentor response normalization", () => {
       referencedEvidence: ["Repository tests"],
     });
     expect(normalizeMentorResponse({}).message).toContain("grounded response");
+  });
+});
+
+describe("persisted mentor history", () => {
+  it("keeps only the latest eight messages and preserves user/assistant roles", () => {
+    const history = boundMentorHistory(
+      Array.from({ length: 10 }, (_, index) => ({
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index}`,
+        createdAt: `2026-09-01T00:00:0${index}.000Z`,
+      })),
+    );
+
+    expect(history).toHaveLength(8);
+    expect(history[0]).toEqual({ role: "user", content: "Message 2" });
+    expect(history[7]).toEqual({ role: "assistant", content: "Message 9" });
+  });
+
+  it("derives ownership only from the authenticated student ID", () => {
+    expect(conversationOwnership("authenticated-student")).toEqual({
+      student_id: "authenticated-student",
+    });
+    expect(MentorInput.safeParse({
+      userMessage: "hello",
+      studentId: "another-student",
+    }).data).toEqual({ userMessage: "hello" });
   });
 });

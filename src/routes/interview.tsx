@@ -5,7 +5,7 @@ import { Send, Bot, User, RefreshCw, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { askMentor, type MentorMessage } from "@/lib/mentor.functions";
+import { askMentor } from "@/lib/mentor.functions";
 
 export const Route = createFileRoute("/interview")({
   head: () => ({
@@ -54,11 +54,7 @@ function InterviewPage() {
     setMessages((current) => [...current, { id: crypto.randomUUID(), from: "you", text }]);
     setLoading(true);
     try {
-      const recentMessages: MentorMessage[] = messages.slice(-8).map((message) => ({
-        role: message.from === "you" ? "user" : "assistant",
-        content: message.text,
-      }));
-      const response = await ask({ data: { userMessage: text, recentMessages } });
+      const response = await ask({ data: { userMessage: text } });
       setMessages((current) => [
         ...current,
         {
