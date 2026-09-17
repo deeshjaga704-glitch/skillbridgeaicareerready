@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   AlertCircle,
   ArrowRight,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/skillbridge-store";
 import { SkillStatusBadge } from "@/components/skill-status-badge";
 import { SkillInventory } from "@/components/skill-inventory";
+import { LearningTaskList } from "@/components/learning-task-list";
 import {
   PROJECT_EVIDENCE,
   rankedActions,
@@ -39,6 +41,11 @@ import {
   freshnessLabel,
 } from "@/lib/skillbridge-evidence";
 import { getAuthenticatedProfile, getAuthenticatedSkillProgress } from "@/lib/supabase/profile";
+import {
+  completeAuthenticatedLearningTask,
+  getAuthenticatedLearningTasks,
+  type AuthenticatedLearningTasks,
+} from "@/lib/supabase/learning-tasks";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -82,9 +89,15 @@ function useSmoothedRange(target: { low: number; high: number }) {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const loadLearningTasks = useServerFn(getAuthenticatedLearningTasks);
+  const completeLearningTask = useServerFn(completeAuthenticatedLearningTask);
   const [student, setStudent] = useState<Student | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [learningTasks, setLearningTasks] = useState<AuthenticatedLearningTasks | null>(null);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [openWhy, setOpenWhy] = useState(false);
@@ -112,6 +125,17 @@ function Dashboard() {
         );
         setSkills(await getAuthenticatedSkillProgress());
         setActivity(getActivity());
+        try {
+          const taskData = await loadLearningTasks({ data: {} });
+          if (!cancelled) {
+            setLearningTasks(taskData);
+            setTasksError(null);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setTasksError(error instanceof Error ? error.message : "We couldn't load your learning tasks.");
+          }
+        }
         setLoadError(null);
       } catch (error) {
         if (!cancelled) {
@@ -119,6 +143,7 @@ function Dashboard() {
         }
       } finally {
         if (!cancelled) setReady(true);
+        if (!cancelled) setTasksLoading(false);
       }
     }
 
@@ -127,6 +152,23 @@ function Dashboard() {
       cancelled = true;
     };
   }, []);
+
+  const completeTask = async (taskId: string) => {
+    setCompletingTaskId(taskId);
+    try {
+      const completedTask = await completeLearningTask({ data: { taskId } });
+      if (!completedTask) throw new Error("That learning task is no longer available.");
+      setLearningTasks((current) => current ? {
+        active: current.active.filter((task) => task.id !== taskId),
+        completed: [completedTask, ...current.completed.filter((task) => task.id !== taskId)],
+      } : current);
+      toast.success("Learning task completed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "We couldn't complete that learning task.");
+    } finally {
+      setCompletingTaskId(null);
+    }
+  };
 
   const role = student?.targetRole;
   const factors = useMemo(() => scoreFactors(skills, role), [skills, role]);
@@ -402,6 +444,16 @@ function Dashboard() {
           </div>
         </section>
       )}
+
+      <div className="mt-8">
+        <LearningTaskList
+          tasks={learningTasks}
+          loading={tasksLoading}
+          error={tasksError}
+          completingTaskId={completingTaskId}
+          onComplete={(taskId) => void completeTask(taskId)}
+        />
+      </div>
 
       <div className="mt-8">
         <SkillInventory skills={skills} />

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { skillMatchScore, skillState } from "@/lib/skillbridge-evidence";
+import { mapAuthenticatedSkillProgress } from "@/lib/supabase/profile";
 import type { Skill } from "@/lib/skillbridge-store";
 
 const progressSkill: Skill = {
@@ -25,6 +26,18 @@ describe("skillState", () => {
     };
 
     expect(skillState(oldVerification)).toBe("needs-evidence");
+  });
+
+  it("maps a verified Supabase record to verified without trusting proficiency", () => {
+    const [verified, unverified] = mapAuthenticatedSkillProgress([
+      { skill_name: "React", category: "technical", proficiency: 70, target_proficiency: 100, evidence_count: 1, last_practiced_at: null },
+      { skill_name: "TypeScript", category: "technical", proficiency: 60, target_proficiency: 100, evidence_count: 0, last_practiced_at: null },
+    ], "student-1", [
+      { skill_name: "React", outcome: "verified", timestamp: "2026-09-15T00:00:00.000Z" },
+    ]);
+
+    expect(verified).toMatchObject({ name: "React", status: "verified", source: "project", evidenceCount: 1 });
+    expect(unverified).toMatchObject({ name: "TypeScript", status: "needs-evidence", source: "manual", evidenceCount: 0 });
   });
 });
 

@@ -124,6 +124,49 @@ export async function getAuthenticatedProfile(): Promise<{
   };
 }
 
+type SkillProgressRow = {
+  skill_name: string;
+  category: string | null;
+  proficiency: number | null;
+  target_proficiency: number | null;
+  evidence_count: number | null;
+  last_practiced_at: string | null;
+};
+
+type VerificationStatusRow = {
+  skill_name: string;
+  outcome: string;
+  timestamp: string;
+};
+
+export function mapAuthenticatedSkillProgress(
+  progressRows: SkillProgressRow[],
+  profileId: string,
+  verificationRows: VerificationStatusRow[] = [],
+): Skill[] {
+  const verifiedBySkill = new Map(
+    verificationRows
+      .filter((row) => row.outcome === "verified")
+      .map((row) => [row.skill_name.toLowerCase(), row.timestamp]),
+  );
+
+  return progressRows.map((row) => {
+    const lastVerifiedAt = verifiedBySkill.get(row.skill_name.toLowerCase());
+    return {
+      id: `${profileId}:${row.skill_name}`,
+      name: row.skill_name,
+      status: lastVerifiedAt ? ("verified" as const) : ("needs-evidence" as const),
+      source: lastVerifiedAt ? ("project" as const) : ("manual" as const),
+      category: row.category ?? undefined,
+      proficiency: row.proficiency ?? undefined,
+      targetProficiency: row.target_proficiency ?? undefined,
+      evidenceCount: row.evidence_count ?? undefined,
+      lastPracticedAt: row.last_practiced_at ?? undefined,
+      lastVerifiedAt,
+    };
+  });
+}
+
 export async function getAuthenticatedSkillProgress(): Promise<Skill[]> {
   const user = await getAuthenticatedSession();
 
@@ -145,28 +188,34 @@ export async function getAuthenticatedSkillProgress(): Promise<Skill[]> {
     return [];
   }
 
-  const { data: progressRows, error: progressError } = await supabase
-    .from("skill_progress")
-    .select(
-      "skill_name, category, proficiency, target_proficiency, evidence_count, last_practiced_at",
-    )
-    .eq("student_id", profile.id);
+  const [{ data: progressRows, error: progressError }, { data: verificationRows, error: verificationError }] =
+    await Promise.all([
+      supabase
+        .from("skill_progress")
+        .select(
+          "skill_name, category, proficiency, target_proficiency, evidence_count, last_practiced_at",
+        )
+        .eq("student_id", profile.id),
+      supabase
+        .from("verification_records")
+        .select("skill_name, outcome, timestamp")
+        .eq("student_id", profile.id)
+        .order("timestamp", { ascending: false }),
+    ]);
 
   if (progressError) {
     throw progressError;
   }
+  if (verificationError) {
+    throw verificationError;
+  }
 
-  return (progressRows ?? []).map((row) => ({
-    id: `${profile.id}:${row.skill_name}`,
-    name: row.skill_name,
-    status: "needs-evidence" as const,
-    source: "manual" as const,
-    category: row.category ?? undefined,
-    proficiency: row.proficiency,
-    targetProficiency: row.target_proficiency,
-    evidenceCount: row.evidence_count,
-    lastPracticedAt: row.last_practiced_at ?? undefined,
-  }));
+  return mapAuthenticatedSkillProgress(
+    (progressRows ?? []) as SkillProgressRow[],
+    profile.id,
+    (verificationRows ?? []) as VerificationStatusRow[],
+  );
+
 }
 
 export async function persistVerifiedSkillProgress(

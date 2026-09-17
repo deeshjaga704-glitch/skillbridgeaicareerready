@@ -164,3 +164,42 @@
 @utility gradient-brand {
   background-image: linear-gradient(135deg, var(--primary), color-mix(in oklab, var(--primary) 60%, var(--teal)));
 }
+
+@keyframes beam-dash {
+  to { stroke-dashoffset: -1; }
+}
+
+@keyframes border-beam {
+  0% { left: calc(-1 * var(--border-beam-size)); top: 0; }
+  25% { left: calc(100% - var(--border-beam-size)); top: 0; }
+  50% { left: calc(100% - var(--border-beam-size)); top: calc(100% - var(--border-beam-size)); }
+  75% { left: 0; top: calc(100% - var(--border-beam-size)); }
+  100% { left: calc(-1 * var(--border-beam-size)); top: 0; }
+}
+
+@keyframes shimmer {
+  to { transform: translateX(200%); }
+}
+
+@utility animate-beam-dash {
+  animation: beam-dash var(--beam-duration, 3s) linear infinite;
+}
+
+@utility animate-border-beam {
+  animation: border-beam var(--border-beam-duration, 6s) linear infinite;
+  width: var(--border-beam-size);
+  box-shadow: 0 0 16px 4px var(--border-beam-color);
+}
+
+@utility animate-shimmer {
+  animation: shimmer var(--shimmer-duration, 2s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-beam-dash,
+  .animate-border-beam,
+  .animate-shimmer,
+  .after\:animate-pulse::after {
+    animation: none;
+  }
+}

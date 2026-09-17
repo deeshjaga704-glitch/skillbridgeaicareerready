@@ -36,8 +36,10 @@ export function createServerSupabaseClient() {
 }
 
 /** Returns the authenticated Supabase user for the current request, or null. */
-export async function getServerAuthenticatedUser(): Promise<User | null> {
-  const { data, error } = await createServerSupabaseClient().auth.getUser();
+export async function getServerAuthenticatedUser(
+  supabase = createServerSupabaseClient(),
+): Promise<User | null> {
+  const { data, error } = await supabase.auth.getUser();
 
   if (error) {
     if (error.message === "Auth session missing!") {
