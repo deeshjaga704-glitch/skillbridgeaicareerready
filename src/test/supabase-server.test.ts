@@ -2,15 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getCookies = vi.fn(() => ({ "sb-access-token": "cookie-value" }));
 const setCookie = vi.fn();
-const setResponseHeaders = vi.fn();
+const setResponseHeader = vi.fn();
 const getUser = vi.fn();
-const createServerClient = vi.fn(() => ({ auth: { getUser } }));
+const createServerClient = vi.fn(
+  (..._args: Parameters<typeof import("@supabase/ssr").createServerClient>) =>
+    ({ auth: { getUser } }) as ReturnType<typeof import("@supabase/ssr").createServerClient>,
+);
 
-vi.mock("@tanstack/react-start/server", () => ({
-  getCookies,
-  setCookie,
-  setResponseHeaders,
-}));
+vi.mock("@tanstack/react-start/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-start/server")>();
+  return {
+    ...actual,
+    getCookies,
+    setCookie,
+    setResponseHeader,
+  };
+});
 
 vi.mock("@supabase/ssr", () => ({ createServerClient }));
 

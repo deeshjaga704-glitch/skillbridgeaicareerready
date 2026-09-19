@@ -1,5 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { getCookies, setCookie, setResponseHeaders } from "@tanstack/react-start/server";
+import { getCookies, setCookie, setResponseHeader } from "@tanstack/react-start/server";
 import type { User } from "@supabase/supabase-js";
 
 function getSupabaseConfig() {
@@ -29,7 +29,9 @@ export function createServerSupabaseClient() {
         for (const { name, value, options } of cookiesToSet) {
           setCookie(name, value, options as CookieOptions);
         }
-        setResponseHeaders(headers);
+        for (const [name, value] of Object.entries(headers)) {
+          setResponseHeader(name, value);
+        }
       },
     },
   });
