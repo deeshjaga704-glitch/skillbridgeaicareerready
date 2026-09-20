@@ -358,6 +358,107 @@ export function fromVerificationRecordRow(
   };
 }
 
+type VerificationRecordRow = {
+  id: string;
+  student_id: string;
+  skill_name: string;
+  token: string;
+  method: VerificationRecord["method"];
+  outcome: VerificationRecord["outcome"];
+  evidence_summary: string;
+  evidence_url: string | null;
+  reason: string;
+  timestamp: string;
+  created_at?: string | null;
+  signals: VerificationRecord["signals"];
+  analysis: VerificationRecord["analysis"] | null;
+};
+
+export function latestVerificationRecordsBySkill<T extends { id: string; skill_name: string; timestamp: string; created_at?: string | null }>(rows: T[]): T[] {
+  const newestBySkill = new Map<string, T>();
+
+  for (const row of rows) {
+    const skillKey = row.skill_name.toLowerCase();
+    const current = newestBySkill.get(skillKey);
+
+    if (!current) {
+      newestBySkill.set(skillKey, row);
+      continue;
+    }
+
+    const currentTs = Date.parse(current.timestamp || "0");
+    const nextTs = Date.parse(row.timestamp || "0");
+
+    if (nextTs > currentTs) {
+      newestBySkill.set(skillKey, row);
+      continue;
+    }
+
+    if (nextTs === currentTs) {
+      const currentCreatedAt = current.created_at ? Date.parse(current.created_at) : 0;
+      const nextCreatedAt = row.created_at ? Date.parse(row.created_at) : 0;
+
+      if (nextCreatedAt > currentCreatedAt) {
+        newestBySkill.set(skillKey, row);
+        continue;
+      }
+
+      if (nextCreatedAt === currentCreatedAt && row.id.localeCompare(current.id) > 0) {
+        newestBySkill.set(skillKey, row);
+      }
+    }
+  }
+
+  return Array.from(newestBySkill.values());
+}
+
+export function mapAuthenticatedVerificationRecords(
+  rows: VerificationRecordRow[],
+  studentName: string,
+): VerificationRecord[] {
+  return rows.map((row) => fromVerificationRecordRow(row, studentName));
+}
+
+export async function getAuthenticatedVerificationRecords(): Promise<VerificationRecord[]> {
+  const user = await getAuthenticatedSession();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("student_profiles")
+    .select("id, name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (!profile) {
+    return [];
+  }
+
+  const { data: rows, error: recordError } = await supabase
+    .from("verification_records")
+    .select(
+      "id, student_id, skill_name, token, method, outcome, evidence_summary, evidence_url, reason, timestamp, created_at, signals, analysis",
+    )
+    .eq("student_id", profile.id)
+    .order("timestamp", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (recordError) {
+    throw recordError;
+  }
+
+  return mapAuthenticatedVerificationRecords(
+    latestVerificationRecordsBySkill((rows ?? []) as VerificationRecordRow[]),
+    profile.name,
+  );
+}
+
 export async function getAuthenticatedVerificationRecordByToken(
   token: string,
 ): Promise<VerificationRecord | null> {
