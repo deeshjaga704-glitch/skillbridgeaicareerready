@@ -459,6 +459,38 @@ export async function getAuthenticatedVerificationRecords(): Promise<Verificatio
   );
 }
 
+export async function getPublicVerificationRecordByToken(
+  token: string,
+): Promise<VerificationRecord | null> {
+  const { data: row, error: recordError } = await supabase
+    .from("verification_records")
+    .select(
+      "id, student_id, skill_name, token, method, outcome, evidence_summary, evidence_url, reason, timestamp, signals, analysis",
+    )
+    .eq("token", token)
+    .maybeSingle();
+
+  if (recordError) {
+    throw recordError;
+  }
+
+  if (!row) {
+    return null;
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("student_profiles")
+    .select("name")
+    .eq("id", row.student_id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  return fromVerificationRecordRow(row, profile?.name ?? "Student");
+}
+
 export async function getAuthenticatedVerificationRecordByToken(
   token: string,
 ): Promise<VerificationRecord | null> {
