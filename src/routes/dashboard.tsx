@@ -21,7 +21,6 @@ import {
   computeReadiness,
   getActivity,
   getRecords,
-  getStudent,
   getSmoothedScore,
   saveSmoothedScore,
   type ActivityItem,
@@ -109,19 +108,7 @@ function Dashboard() {
         const { user, student: profileStudent } = await getAuthenticatedProfile();
         if (cancelled) return;
 
-        const cachedStudent = getStudent();
-        setStudent(
-          profileStudent ??
-            (cachedStudent
-              ? { ...cachedStudent, email: user.email }
-              : {
-                  name: user.email ?? "Your profile",
-                  email: user.email,
-                  yearOfStudy: "",
-                  targetRole: "Software Engineer",
-                  createdAt: user.created_at,
-                }),
-        );
+        setStudent(profileStudent ?? null);
         setSkills(await getAuthenticatedSkillProgress());
         setActivity(getActivity());
         try {
@@ -205,6 +192,22 @@ function Dashboard() {
         <h1 className="font-display text-xl font-bold">We couldn't load your dashboard</h1>
         <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
       </div>
+    );
+  }
+
+  if (!student) {
+    return (
+      <AppShell>
+        <div className="mx-auto max-w-2xl rounded-3xl border border-border/60 bg-card p-8 text-center shadow-lg shadow-primary/5">
+          <h1 className="font-display text-3xl font-bold tracking-tight">Complete onboarding to get started</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Your authenticated profile has not been created yet. Finish onboarding to load your dashboard, skills, evidence, and readiness.
+          </p>
+          <Link to="/onboarding" className="mt-6 inline-block">
+            <Button className="rounded-full">Set up your profile</Button>
+          </Link>
+        </div>
+      </AppShell>
     );
   }
 
