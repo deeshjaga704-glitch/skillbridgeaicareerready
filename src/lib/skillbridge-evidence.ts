@@ -188,9 +188,30 @@ export function buildReport(skill: Skill): EvidenceReport {
 
 export type ScoreFactor = { label: string; value: number; max: number; why: string };
 
+function authenticatedEvidenceCount(skills: Skill[]): number {
+  return skills
+    .filter((skill) => skillState(skill) === "verified")
+    .reduce((total, skill) => total + Math.max(0, skill.evidenceCount ?? 0), 0);
+}
+
+function averageVerifiedProficiency(skills: Skill[]): number {
+  const verified = skills.filter((skill) => skillState(skill) === "verified");
+  if (verified.length === 0) return 0;
+
+  const contributions = verified.map((skill) => {
+    const target = skill.targetProficiency ?? 100;
+    const proficiency = skill.proficiency ?? 0;
+    return Math.min(1, Math.max(0, proficiency / target));
+  });
+
+  return (contributions.reduce((total, value) => total + value, 0) / contributions.length) * 100;
+}
+
 export function scoreFactors(skills: Skill[], role?: string): ScoreFactor[] {
   const reqs = requirementsForRole(role);
   const verified = skills.filter((s) => skillState(s) === "verified");
+  const evidenceSignals = authenticatedEvidenceCount(skills);
+  const avgVerifiedProficiency = averageVerifiedProficiency(skills);
   const core = reqs.filter((r) => r.importance === "core");
   const coreMatch = core.reduce(
     (total, requirement) =>
@@ -200,38 +221,33 @@ export function scoreFactors(skills: Skill[], role?: string): ScoreFactor[] {
       ),
     0,
   );
-  const tests = PROJECT_EVIDENCE.reduce((a, p) => a + p.tests.passing, 0);
-  const testTotal = PROJECT_EVIDENCE.reduce((a, p) => a + p.tests.count, 0) || 1;
+
   return [
     {
       label: "Technical skills",
       value: Math.min(30, verified.length * 8),
       max: 30,
-      why: `${verified.length} skills verified with evidence`,
+      why: `${verified.length} authenticated skills verified with evidence`,
     },
     {
-      label: "Project evidence",
-      value: Math.min(25, PROJECT_EVIDENCE.length * 8),
+      label: "Evidence",
+      value: Math.min(25, Math.round((evidenceSignals / Math.max(skills.length || 1, 1)) * 25)),
       max: 25,
-      why: `${PROJECT_EVIDENCE.length} projects analysed`,
+      why: `${evidenceSignals} authenticated evidence signals across ${skills.length} recorded skills`,
     },
     {
       label: "Problem solving",
-      value: 15,
+      value: Math.min(20, Math.round((avgVerifiedProficiency / 100) * 20)),
       max: 20,
-      why: "Assessment scores across correctness and design",
-    },
-    {
-      label: "Testing & quality",
-      value: Math.round((tests / testTotal) * 15),
-      max: 15,
-      why: `${tests}/${testTotal} tests passing across your projects`,
+      why: verified.length
+        ? `${Math.round(avgVerifiedProficiency)}% average proficiency across verified skills`
+        : "No verified skills yet for problem-solving depth",
     },
     {
       label: "Job-role match",
-      value: core.length ? Math.round((coreMatch / core.length) * 10) : 0,
-      max: 10,
-      why: `${Math.round((coreMatch / (core.length || 1)) * 100)}% progress across ${core.length} core requirements for your target role`,
+      value: core.length ? Math.round((coreMatch / core.length) * 25) : 0,
+      max: 25,
+      why: `${Math.round((coreMatch / (core.length || 1)) * 100)}% role-fit across ${core.length} core requirements`,
     },
   ];
 }

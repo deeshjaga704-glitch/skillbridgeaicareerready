@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { skillMatchScore, skillState } from "@/lib/skillbridge-evidence";
+import {
+  PROJECT_EVIDENCE,
+  scoreFactors,
+  skillMatchScore,
+  skillState,
+} from "@/lib/skillbridge-evidence";
 import { mapAuthenticatedSkillProgress } from "@/lib/supabase/profile";
 import type { Skill } from "@/lib/skillbridge-store";
 
@@ -49,5 +54,49 @@ describe("skillMatchScore", () => {
   it("does not turn unverified proficiency into verified status", () => {
     expect(skillMatchScore(progressSkill, "React")).toBeGreaterThan(0);
     expect(skillState(progressSkill)).not.toBe("verified");
+  });
+});
+
+describe("scoreFactors", () => {
+  it("derives readiness from authenticated skill evidence and ignores legacy project fixtures", () => {
+    const skills = mapAuthenticatedSkillProgress([
+      { skill_name: "React", category: "technical", proficiency: 85, target_proficiency: 100, evidence_count: 2, last_practiced_at: null },
+      { skill_name: "TypeScript", category: "technical", proficiency: 65, target_proficiency: 100, evidence_count: 1, last_practiced_at: null },
+      { skill_name: "Node.js", category: "technical", proficiency: 45, target_proficiency: 100, evidence_count: 0, last_practiced_at: null },
+    ], "student-1", [
+      { skill_name: "React", outcome: "verified", timestamp: "2026-09-15T00:00:00.000Z" },
+      { skill_name: "TypeScript", outcome: "verified", timestamp: "2026-09-16T00:00:00.000Z" },
+    ]);
+
+    const baseline = scoreFactors(skills, "Frontend Engineer");
+    const technical = baseline.find((factor) => factor.label === "Technical skills");
+    const evidence = baseline.find((factor) => factor.label === "Evidence");
+    const labels = baseline.map((factor) => factor.label);
+
+    expect(technical?.value).toBeGreaterThan(0);
+    expect(technical?.why).toContain("2 authenticated skills verified");
+    expect(evidence?.why).toContain("3 authenticated evidence signals");
+    expect(labels).not.toContain("Project evidence");
+    expect(labels).not.toContain("Testing & quality");
+
+    const legacyFixtureCount = PROJECT_EVIDENCE.length;
+    PROJECT_EVIDENCE.length = 0;
+    const shadowed = scoreFactors(skills, "Frontend Engineer");
+    PROJECT_EVIDENCE.push(...Array.from({ length: legacyFixtureCount }, (_, index) => ({
+      id: `fixture-${index}`,
+      title: `Legacy fixture ${index}`,
+      summary: "Legacy fixture",
+      skills: ["React"],
+      technologies: ["React"],
+      githubUrl: "https://example.com",
+      tests: { count: 1, passing: 1 },
+      documentation: "basic" as const,
+      difficulty: "Starter" as const,
+      readinessImpact: 0,
+      assessment: [],
+      completedAt: "2026-09-01T00:00:00.000Z",
+    })));
+
+    expect(shadowed).toEqual(baseline);
   });
 });

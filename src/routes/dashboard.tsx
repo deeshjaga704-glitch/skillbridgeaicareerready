@@ -32,7 +32,6 @@ import { SkillStatusBadge } from "@/components/skill-status-badge";
 import { SkillInventory } from "@/components/skill-inventory";
 import { LearningTaskList } from "@/components/learning-task-list";
 import {
-  PROJECT_EVIDENCE,
   rankedActions,
   roleReadiness,
   scoreFactors,
@@ -171,6 +170,16 @@ function Dashboard() {
   };
 
   const role = student?.targetRole;
+  const grouped = {
+    verified: skills.filter((s) => skillState(s) === "verified"),
+    "in-review": skills.filter((s) => skillState(s) === "in-review"),
+    "needs-evidence": skills.filter((s) => skillState(s) === "needs-evidence"),
+    claimed: skills.filter((s) => skillState(s) === "claimed"),
+  };
+  const authenticatedEvidenceCount = useMemo(
+    () => skills.reduce((total, skill) => total + Math.max(0, skill.evidenceCount ?? 0), 0),
+    [skills],
+  );
   const factors = useMemo(() => scoreFactors(skills, role), [skills, role]);
   const readinessFactors = useMemo(
     () => factors.map(({ value, max }) => ({ value, max })),
@@ -204,13 +213,6 @@ function Dashboard() {
     if (!rec) return toast.error("No evidence report yet for this skill");
     await navigator.clipboard.writeText(`${window.location.origin}/report/${rec.token}`);
     toast.success(`Copied the ${skill.name} evidence report link`);
-  };
-
-  const grouped = {
-    verified: skills.filter((s) => skillState(s) === "verified"),
-    "in-review": skills.filter((s) => skillState(s) === "in-review"),
-    "needs-evidence": skills.filter((s) => skillState(s) === "needs-evidence"),
-    claimed: skills.filter((s) => skillState(s) === "claimed"),
   };
 
   return (
@@ -254,7 +256,7 @@ function Dashboard() {
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
           Built from{" "}
-          <span className="font-semibold text-foreground">{PROJECT_EVIDENCE.length} analysed projects</span> and{" "}
+          <span className="font-semibold text-foreground">{authenticatedEvidenceCount} authenticated evidence signals</span> and{" "}
           <span className="font-semibold text-foreground">{grouped.verified.length} verified skills</span>. A range,
           not a single number — a single number would be false precision.
         </p>
@@ -459,29 +461,7 @@ function Dashboard() {
         <SkillInventory skills={skills} />
       </div>
 
-      {/* 5. Recent evidence */}
-      <section className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border/60 bg-card p-6">
-          <h2 className="font-display text-lg font-bold">Recent evidence</h2>
-          <ul className="mt-4 space-y-2">
-            {PROJECT_EVIDENCE.map((p) => (
-              <li key={p.id} className="rounded-xl border border-border/60 bg-background/60 px-3 py-2.5 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{p.title}</span>
-                  <span className="text-xs text-muted-foreground">proves {p.skills.join(", ")}</span>
-                  <span className="ml-auto text-xs text-success">+{p.readinessImpact} pts</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {p.tests.passing}/{p.tests.count} tests · {p.difficulty} · {new Date(p.completedAt).toLocaleDateString()}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <Link to="/evidence" className="mt-4 inline-block text-sm text-primary underline">
-            Open all evidence records
-          </Link>
-        </div>
-
+      <section className="mt-8">
         <div className="rounded-3xl border border-border/60 bg-card p-6">
           <div className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-soft text-teal">
