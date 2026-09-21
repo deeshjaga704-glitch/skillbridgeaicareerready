@@ -1,6 +1,12 @@
 import { supabase } from "./supabase";
 import { setActiveUserId } from "../skillbridge-store";
 
+export type AuthIntent = "login" | "onboarding";
+
+export function authenticatedDestination(intent: string): "/dashboard" | "/onboarding" {
+  return intent === "onboarding" ? "/onboarding" : "/dashboard";
+}
+
 export async function getAuthenticatedSession() {
   const {
     data: { user },
@@ -39,6 +45,14 @@ export async function signIn(
     email,
     password,
   });
+}
+
+export async function sendEmailCode(email: string) {
+  return await supabase.auth.signInWithOtp({ email });
+}
+
+export async function verifyEmailCode(email: string, token: string) {
+  return await supabase.auth.verifyOtp({ email, token, type: "email" });
 }
 
 export async function signOut() {

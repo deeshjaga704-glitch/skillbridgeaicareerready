@@ -5,14 +5,8 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import {
-  getRecords,
-  getSkills,
-  getStudent,
-  type Skill,
-  type Student,
-  type VerificationRecord,
-} from "@/lib/skillbridge-store";
+import type { Skill, Student, VerificationRecord } from "@/lib/skillbridge-store";
+import { getAuthenticatedProfile, getAuthenticatedSkillProgress, getAuthenticatedVerificationRecords } from "@/lib/supabase/profile";
 import { VerificationBadge } from "@/components/verification-badge";
 
 export const Route = createFileRoute("/resume")({
@@ -37,9 +31,19 @@ function ResumePage() {
   const [includeClaimed, setIncludeClaimed] = useState(false);
 
   useEffect(() => {
-    setStudent(getStudent());
-    setSkills(getSkills());
-    setRecords(getRecords());
+    void Promise.all([
+      getAuthenticatedProfile(),
+      getAuthenticatedSkillProgress(),
+      getAuthenticatedVerificationRecords(),
+    ]).then(([{ student: profileStudent }, authenticatedSkills, authenticatedRecords]) => {
+      setStudent(profileStudent);
+      setSkills(authenticatedSkills);
+      setRecords(authenticatedRecords);
+    }).catch(() => {
+      setStudent(null);
+      setSkills([]);
+      setRecords([]);
+    });
   }, []);
 
   const verified = skills.filter((s) => s.status === "verified");
@@ -70,9 +74,9 @@ function ResumePage() {
         </div>
 
         <article className="rounded-3xl border border-border bg-card p-8">
-          <h2 className="font-display text-2xl font-bold">{student?.name || "Your name"}</h2>
+          <h2 className="font-display text-2xl font-bold">{student?.name || "Complete onboarding"}</h2>
           <p className="text-muted-foreground">
-            {(student?.targetRole || "Aspiring software engineer") +
+            {(student?.targetRole || "Set your target role") +
               (student?.yearOfStudy ? ` · ${student.yearOfStudy}` : "")}
           </p>
           {student?.email && <p className="text-sm text-muted-foreground">{student.email}</p>}

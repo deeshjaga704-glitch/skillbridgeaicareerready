@@ -31,6 +31,7 @@ import {
   type VerificationOutcome,
 } from "@/lib/skillbridge-store";
 import { VerificationBadge } from "@/components/verification-badge";
+import { getAuthenticatedVerificationRecords } from "@/lib/supabase/profile";
 
 export const Route = createFileRoute("/projects")({
   head: () => ({
@@ -52,6 +53,7 @@ const SIGNAL_PLAN: Array<Pick<VerificationSignal, "type" | "label"> & { detail: 
 ];
 
 function ProjectsPage() {
+  const [recentRecords, setRecentRecords] = useState<VerificationRecord[]>([]);
   const [skillName, setSkillName] = useState("React");
   const [repoUrl, setRepoUrl] = useState("https://github.com/alex/todo-app");
   const [notes, setNotes] = useState("");
@@ -60,6 +62,10 @@ function ProjectsPage() {
   const [result, setResult] = useState<VerificationRecord | null>(null);
 
   const signals = useMemo(() => SIGNAL_PLAN.map((s) => ({ ...s })), []);
+
+  useEffect(() => {
+    void getAuthenticatedVerificationRecords().then(setRecentRecords).catch(() => setRecentRecords([]));
+  }, []);
 
   useEffect(() => {
     if (stage !== "running") return;
@@ -100,7 +106,7 @@ function ProjectsPage() {
       token: id.slice(0, 8),
       skillId: `dyn-${id.slice(0, 6)}`,
       skillName,
-      studentName: "Alex Rivera",
+      studentName: "Authenticated student",
       method: "github-repo",
       evidenceSummary: `${repoUrl}${notes ? ` — ${notes}` : ""}`,
       outcome,
@@ -304,7 +310,7 @@ function ProjectsPage() {
           <h2 className="font-display text-lg font-bold">Recent verification records</h2>
         </div>
         <ul className="mt-4 divide-y divide-border/60">
-          {getRecords().slice(0, 6).map((r) => (
+          {recentRecords.slice(0, 6).map((r) => (
             <li key={r.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
               <span className="font-medium">{r.skillName}</span>
               <VerificationBadge method={r.method} />
@@ -314,6 +320,7 @@ function ProjectsPage() {
               </Link>
             </li>
           ))}
+          {recentRecords.length === 0 && <li className="py-3 text-sm text-muted-foreground">No projects analyzed yet.</li>}
         </ul>
       </div>
     </AppShell>

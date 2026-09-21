@@ -88,9 +88,9 @@ export function getConnections(): Connection[] {
   if (typeof window === "undefined") return DEFAULT_CONNECTIONS;
   try {
     const raw = localStorage.getItem(storageKey(CONN_KEY));
-    return raw ? (JSON.parse(raw) as Connection[]) : DEFAULT_CONNECTIONS;
+    return raw ? (JSON.parse(raw) as Connection[]) : activeUserId ? [] : DEFAULT_CONNECTIONS;
   } catch {
-    return DEFAULT_CONNECTIONS;
+    return activeUserId ? [] : DEFAULT_CONNECTIONS;
   }
 }
 export function saveConnections(c: Connection[]) {
@@ -108,9 +108,9 @@ export function getActivity(): ActivityItem[] {
   if (typeof window === "undefined") return DEFAULT_ACTIVITY;
   try {
     const raw = localStorage.getItem(storageKey(ACTIVITY_KEY));
-    return raw ? (JSON.parse(raw) as ActivityItem[]) : DEFAULT_ACTIVITY;
+    return raw ? (JSON.parse(raw) as ActivityItem[]) : activeUserId ? [] : DEFAULT_ACTIVITY;
   } catch {
-    return DEFAULT_ACTIVITY;
+    return activeUserId ? [] : DEFAULT_ACTIVITY;
   }
 }
 export function pushActivity(item: Omit<ActivityItem, "id" | "at">) {
@@ -225,10 +225,10 @@ export function getSkills(): Skill[] {
   if (typeof window === "undefined") return DEFAULT_SKILLS;
   try {
     const raw = localStorage.getItem(storageKey(SKILLS_KEY));
-    if (!raw) return DEFAULT_SKILLS;
+    if (!raw) return activeUserId ? [] : DEFAULT_SKILLS;
     return JSON.parse(raw) as Skill[];
   } catch {
-    return DEFAULT_SKILLS;
+    return activeUserId ? [] : DEFAULT_SKILLS;
   }
 }
 
@@ -285,9 +285,9 @@ export function getRecords(): VerificationRecord[] {
   if (typeof window === "undefined") return DEFAULT_RECORDS;
   try {
     const raw = localStorage.getItem(storageKey(RECORDS_KEY));
-    return raw ? (JSON.parse(raw) as VerificationRecord[]) : DEFAULT_RECORDS;
+    return raw ? (JSON.parse(raw) as VerificationRecord[]) : activeUserId ? [] : DEFAULT_RECORDS;
   } catch {
-    return DEFAULT_RECORDS;
+    return activeUserId ? [] : DEFAULT_RECORDS;
   }
 }
 export function saveRecords(r: VerificationRecord[]) {

@@ -19,8 +19,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   computeReadiness,
-  getActivity,
-  getRecords,
   getSmoothedScore,
   saveSmoothedScore,
   type ActivityItem,
@@ -38,7 +36,7 @@ import {
   skillState,
   freshnessLabel,
 } from "@/lib/skillbridge-evidence";
-import { getAuthenticatedProfile, getAuthenticatedSkillProgress } from "@/lib/supabase/profile";
+import { getAuthenticatedProfile, getAuthenticatedSkillProgress, getAuthenticatedVerificationRecords } from "@/lib/supabase/profile";
 import {
   completeAuthenticatedLearningTask,
   getAuthenticatedLearningTasks,
@@ -92,6 +90,7 @@ function Dashboard() {
   const [student, setStudent] = useState<Student | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [records, setRecords] = useState<Awaited<ReturnType<typeof getAuthenticatedVerificationRecords>>>([]);
   const [learningTasks, setLearningTasks] = useState<AuthenticatedLearningTasks | null>(null);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [tasksError, setTasksError] = useState<string | null>(null);
@@ -109,8 +108,12 @@ function Dashboard() {
         if (cancelled) return;
 
         setStudent(profileStudent ?? null);
-        setSkills(await getAuthenticatedSkillProgress());
-        setActivity(getActivity());
+        const [authenticatedSkills, authenticatedRecords] = await Promise.all([
+          getAuthenticatedSkillProgress(),
+          getAuthenticatedVerificationRecords(),
+        ]);
+        setSkills(authenticatedSkills);
+        setRecords(authenticatedRecords);
         try {
           const taskData = await loadLearningTasks({ data: {} });
           if (!cancelled) {
@@ -180,7 +183,7 @@ function Dashboard() {
   const roleFit = useMemo(() => roleReadiness(skills, role), [skills, role]);
   const actions = useMemo(() => rankedActions(skills, role), [skills, role]);
   const top = actions[0];
-  const lastCalc = activity[0]?.at ?? new Date().toISOString();
+  const lastCalc = activity[0]?.at;
 
   if (!ready) {
     return <div className="p-8 text-sm text-muted-foreground">Loading your dashboard...</div>;
@@ -212,7 +215,7 @@ function Dashboard() {
   }
 
   const share = async (skill: Skill) => {
-    const rec = getRecords().find((r) => r.id === skill.verificationRecordId);
+    const rec = records.find((r) => r.id === skill.verificationRecordId);
     if (!rec) return toast.error("No evidence report yet for this skill");
     await navigator.clipboard.writeText(`${window.location.origin}/report/${rec.token}`);
     toast.success(`Copied the ${skill.name} evidence report link`);
@@ -264,8 +267,7 @@ function Dashboard() {
           not a single number — a single number would be false precision.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Last recalculated {new Date(lastCalc).toLocaleString()}
-          {activity[0]?.reason ? ` · after ${activity[0].reason}` : ""}
+          {lastCalc ? `Last recalculated ${new Date(lastCalc).toLocaleString()}${activity[0]?.reason ? ` · after ${activity[0].reason}` : ""}` : "No score changes yet."}
         </p>
 
         <div className="mt-6">

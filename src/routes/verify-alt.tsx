@@ -37,7 +37,7 @@ function VerifyAltPage() {
         token: id.slice(0, 8),
         skillId: `alt-${id.slice(0, 6)}`,
         skillName: skill,
-        studentName: "Alex Rivera",
+        studentName: "Authenticated student",
         method,
         outcome: path === "instructor" ? "partial" : "verified",
         evidenceSummary:

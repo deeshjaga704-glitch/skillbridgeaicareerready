@@ -19,11 +19,10 @@ import { MagicCard } from "@/components/ui/magic-card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { SkillStatusBadge } from "@/components/skill-status-badge";
 import { cn } from "@/lib/utils";
-import { getSkills, type Skill, type Student } from "@/lib/skillbridge-store";
-import { getAuthenticatedProfile } from "@/lib/supabase/profile";
+import type { Skill, Student } from "@/lib/skillbridge-store";
+import { getAuthenticatedProfile, getAuthenticatedSkillProgress } from "@/lib/supabase/profile";
 import { useServerFn } from "@tanstack/react-start";
 import { loadOrCreateRoadmap, updateRoadmapStep, type PersistedRoadmapStep } from "@/lib/supabase/roadmap";
-import { buildSteps } from "@/lib/roadmap-generator";
 
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
@@ -43,8 +42,6 @@ export const Route = createFileRoute("/roadmap")({
   }),
   component: RoadmapPage,
 });
-
-const DONE_KEY = "skillbridge:roadmap-done:v1";
 
 type Step = PersistedRoadmapStep & { detail: string; appId: string };
 
@@ -85,9 +82,6 @@ function RoadmapPage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    const localSkills = getSkills();
-    setSkills(localSkills);
-
     async function loadProfile(): Promise<Student | null> {
       try {
         const { student: profileStudent } = await getAuthenticatedProfile();
@@ -99,18 +93,9 @@ function RoadmapPage() {
       }
     }
 
-    void loadProfile().then(async (profileStudent) => {
-      let completedStepIds: string[] = [];
-      try {
-        const raw = localStorage.getItem(DONE_KEY);
-        completedStepIds = raw ? JSON.parse(raw) as string[] : [];
-      } catch {
-        completedStepIds = [];
-      }
-      const autoCompletedIds = buildSteps(localSkills, profileStudent?.targetRole)
-        .filter((step) => step.auto)
-        .map((step) => step.id);
-      const roadmap = await loadRoadmap({ data: { completedStepIds: [...new Set([...completedStepIds, ...autoCompletedIds])] } });
+    void Promise.all([loadProfile(), getAuthenticatedSkillProgress()]).then(async ([, authenticatedSkills]) => {
+      setSkills(authenticatedSkills);
+      const roadmap = await loadRoadmap({ data: {} });
       if (!cancelled) {
         setProgressPercentage(roadmap.progressPercentage);
         setSteps(roadmap.steps.map((step) => ({ ...step, detail: step.description ?? "" })));
@@ -180,7 +165,7 @@ function RoadmapPage() {
   const nextStep = nextIndex >= 0 ? steps[nextIndex] : undefined;
 
   const skillForStep = (step: Step) => {
-    const skillName = step.title.replace(/^(Verify|Strengthen) /, "");
+    const skillName = step.title.replace(/^(Verify|Strengthen|Verified) /, "");
     return skillName === step.title
       ? undefined
       : skills.find((skill) => skill.name.toLowerCase() === skillName.toLowerCase());

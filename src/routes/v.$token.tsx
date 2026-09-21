@@ -2,7 +2,8 @@ import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ShieldCheck, CheckCircle2, AlertCircle, ExternalLink, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getRecordByToken, type VerificationRecord } from "@/lib/skillbridge-store";
+import { getPublicVerificationRecordByToken } from "@/lib/supabase/profile";
+import type { VerificationRecord } from "@/lib/skillbridge-store";
 import { VerificationBadge } from "@/components/verification-badge";
 import { toast } from "sonner";
 
@@ -23,8 +24,21 @@ function PublicRecord() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setRec(getRecordByToken(token));
-    setReady(true);
+    let active = true;
+
+    void getPublicVerificationRecordByToken(token).then((record) => {
+      if (!active) return;
+      setRec(record);
+      setReady(true);
+    }).catch(() => {
+      if (!active) return;
+      setRec(null);
+      setReady(true);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [token]);
 
   if (!ready) return null;

@@ -175,7 +175,7 @@ export function buildReport(skill: Skill): EvidenceReport {
     record,
     level: skillLevel(skill),
     state: skillState(skill),
-    projects: projectsForSkill(skill.name),
+    projects: [],
     capabilities: CAPABILITIES[skill.name.toLowerCase()] ?? [
       "Applied the skill in a graded project",
       "Explained the approach in a walkthrough",

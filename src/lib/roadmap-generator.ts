@@ -8,28 +8,32 @@ export type RoadmapStepDefinition = {
   auto?: boolean;
 };
 
+function requirementState(skills: Skill[], skillName: string): "verified" | "evidence" | "missing" {
+  const skill = skills.find((candidate) => candidate.name.toLowerCase() === skillName.toLowerCase());
+  if (!skill) return "missing";
+  if (skill.status === "verified") return "verified";
+  if (skill.status === "needs-evidence" || skill.status === "in-review" || skill.proficiency !== undefined) return "evidence";
+  return "missing";
+}
+
 export function buildSteps(skills: Skill[], role?: string): RoadmapStepDefinition[] {
-  const verified = new Set(
-    skills.filter((skill) => skill.status === "verified").map((skill) => skill.name.toLowerCase()),
-  );
   const requirements = requirementsForRole(role);
-  const core = requirements.filter((requirement) => requirement.importance === "core");
-  const helpful = requirements.filter((requirement) => requirement.importance === "helpful");
+  const orderedRequirements = requirements
+    .map((requirement, index) => ({ requirement, index, state: requirementState(skills, requirement.skill) }))
+    .sort((left, right) => Number(left.state === "verified") - Number(right.state === "verified") || left.index - right.index);
 
   return [
     { id: "profile", title: "Set up your profile", detail: "Name, year of study and target role.", auto: true },
     { id: "connect", title: "Connect your accounts", detail: "GitHub, coding practice and certificates feed your score." },
-    ...core.map((requirement) => ({
-      id: `core-${requirement.skill}`,
-      title: `Verify ${requirement.skill}`,
-      detail: requirement.why,
-      auto: verified.has(requirement.skill.toLowerCase()),
-    })),
-    ...helpful.map((requirement) => ({
-      id: `helpful-${requirement.skill}`,
-      title: `Strengthen ${requirement.skill}`,
-      detail: requirement.why,
-      auto: verified.has(requirement.skill.toLowerCase()),
+    ...orderedRequirements.map(({ requirement, state }) => ({
+      id: `${requirement.importance}-${requirement.skill}`,
+      title: state === "verified" ? `Verified ${requirement.skill}` : `${state === "evidence" ? "Strengthen" : "Verify"} ${requirement.skill}`,
+      detail: state === "verified"
+        ? `${requirement.skill} is backed by verification evidence.`
+        : state === "evidence"
+          ? `Add stronger evidence for ${requirement.skill}. ${requirement.why}`
+          : requirement.why,
+      auto: state === "verified",
     })),
     { id: "resume", title: "Generate your verified resume", detail: "Built only from evidence you can back up." },
     { id: "interview", title: "Run three mock interviews", detail: "Practise explaining your own projects out loud." },

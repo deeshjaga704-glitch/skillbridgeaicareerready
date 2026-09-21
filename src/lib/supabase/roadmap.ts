@@ -41,9 +41,7 @@ export type PersistedRoadmap = {
   steps: PersistedRoadmapStep[];
 };
 
-const InitializeInput = z.object({
-  completedStepIds: z.array(z.string().min(1).max(100)).max(100),
-}).strict();
+const InitializeInput = z.object({}).strict();
 
 const UpdateStepInput = z.object({
   stepId: z.string().uuid(),
@@ -84,12 +82,12 @@ function roadmapDiagnosticError(stage: string, error: unknown): Error {
   return new Error(`[roadmap:${stage}] ${metadata || "Unknown server error"}`);
 }
 
-function toSkillRows(rows: Array<Record<string, unknown>>, studentId: string): Skill[] {
+function toSkillRows(rows: Array<Record<string, unknown>>, studentId: string, verifiedSkillNames: Set<string>): Skill[] {
   return rows.map((row) => ({
     id: `${studentId}:${row.skill_name}`,
     name: row.skill_name as string,
-    status: "needs-evidence",
-    source: "manual",
+    status: verifiedSkillNames.has(String(row.skill_name).toLowerCase()) ? "verified" : "needs-evidence",
+    source: verifiedSkillNames.has(String(row.skill_name).toLowerCase()) ? "project" : "manual",
     category: (row.category as string | null) ?? undefined,
     proficiency: (row.proficiency as number | null) ?? undefined,
     targetProficiency: (row.target_proficiency as number | null) ?? undefined,
@@ -116,6 +114,13 @@ function mapSteps(rows: Array<Record<string, unknown>>, definitions: RoadmapStep
     }));
 }
 
+function roadmapMatchesDefinitions(rows: Array<Record<string, unknown>>, definitions: RoadmapStepDefinition[]): boolean {
+  const sortedRows = rows.slice().sort((a, b) => Number(a.step_order ?? 0) - Number(b.step_order ?? 0));
+  return sortedRows.length === definitions.length && sortedRows.every(
+    (row, index) => row.title === definitions[index].title && row.description === definitions[index].detail,
+  );
+}
+
 async function getContext(supabase: ServerSupabaseClient) {
   const { getServerAuthenticatedUser } = await import("@/lib/supabase/server");
   const user = await getServerAuthenticatedUser(supabase);
@@ -129,17 +134,23 @@ async function getContext(supabase: ServerSupabaseClient) {
   if (profileError) throw profileError;
   if (!profile) throw new Error("Your student profile could not be found.");
 
-  const [{ data: goal, error: goalError }, { data: progress, error: progressError }] = await Promise.all([
+  const [{ data: goal, error: goalError }, { data: progress, error: progressError }, { data: verificationRecords, error: verificationError }] = await Promise.all([
     supabase.from("career_goals").select("id, target_role").eq("student_id", profile.id).eq("status", "active").limit(1).maybeSingle(),
     supabase.from("skill_progress").select("skill_name, category, proficiency, target_proficiency, evidence_count, last_practiced_at").eq("student_id", profile.id),
+    supabase.from("verification_records").select("skill_name, outcome").eq("student_id", profile.id).eq("outcome", "verified"),
   ]);
   if (goalError) throw goalError;
   if (progressError) throw progressError;
+  if (verificationError) throw verificationError;
+
+  const verifiedSkillNames = new Set(
+    ((verificationRecords ?? []) as Array<Record<string, unknown>>).map((row) => String(row.skill_name).toLowerCase()),
+  );
 
   return {
     profile,
     goal,
-    skills: toSkillRows((progress ?? []) as Array<Record<string, unknown>>, profile.id),
+    skills: toSkillRows((progress ?? []) as Array<Record<string, unknown>>, profile.id, verifiedSkillNames),
     studentId: profile.id,
   };
 }
@@ -175,7 +186,7 @@ async function findOwnedActiveRoadmap(supabase: ServerSupabaseClient, studentId:
 
 export const loadOrCreateRoadmap = createServerFn({ method: "POST" })
   .validator((input: unknown) => InitializeInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async () => {
     const { createServerSupabaseClient } = await import("@/lib/supabase/server");
     const supabase = createServerSupabaseClient();
     const { profile, goal, skills, studentId } = await getContext(supabase);
@@ -183,15 +194,43 @@ export const loadOrCreateRoadmap = createServerFn({ method: "POST" })
       const definitions = buildSteps(skills, goal?.target_role ?? profile.current_job_role ?? undefined);
 
       let roadmap = await findOwnedActiveRoadmap(supabase, studentId);
+      const existingRoadmapGoalId = roadmap?.career_goal_id ?? null;
+      let existingSteps: Array<Record<string, unknown>> = [];
+      if (roadmap) {
+        const { data: loadedSteps, error: loadedStepsError } = await supabase
+          .from("roadmap_steps")
+          .select("id, title, description, skill_category, step_order, status, progress_percentage")
+          .eq("roadmap_id", roadmap.id)
+          .order("step_order", { ascending: true });
+        if (loadedStepsError) throw loadedStepsError;
+        existingSteps = (loadedSteps ?? []) as Array<Record<string, unknown>>;
+      }
+
+      if ((roadmap && roadmap.career_goal_id !== (goal?.id ?? null)) || (roadmap && !roadmapMatchesDefinitions(existingSteps, definitions))) {
+        const { error: retireError } = await supabase
+          .from("roadmaps")
+          .update({ status: "inactive" })
+          .eq("id", roadmap.id)
+          .eq("student_id", studentId)
+          .eq("status", "active");
+        if (retireError) throw retireError;
+        roadmap = null;
+      }
+
       if (!roadmap) {
-      const completedIds = new Set(data.completedStepIds);
+      const completedTitles = new Set(
+        existingRoadmapGoalId === (goal?.id ?? null) ?
+        existingSteps
+          .filter((step) => step.status === "completed" || Number(step.progress_percentage ?? 0) >= 100)
+          .map((step) => step.title) : [],
+      );
       const stepRows = definitions.map((definition, index) => ({
         title: definition.title,
         description: definition.detail,
         skill_category: definition.id.startsWith("core-") || definition.id.startsWith("helpful-") ? definition.id.split("-").slice(1).join("-") : "Career foundation",
         step_order: index + 1,
-        status: definition.auto || completedIds.has(definition.id) ? "completed" : "pending",
-        progress_percentage: definition.auto || completedIds.has(definition.id) ? 100 : 0,
+        status: definition.auto || completedTitles.has(definition.title) ? "completed" : "pending",
+        progress_percentage: definition.auto || completedTitles.has(definition.title) ? 100 : 0,
       }));
       const { data: createdRoadmap, error: createError } = await supabase
         .from("roadmaps")

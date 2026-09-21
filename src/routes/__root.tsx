@@ -15,7 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { getAuthenticatedSession } from "@/lib/supabase/auth";
 
-const PUBLIC_PATHS = ["/", "/auth", "/report/", "/v/", "/sitemap.xml"];
+const PUBLIC_PATHS = ["/", "/auth", "/auth/", "/report/", "/v/", "/sitemap.xml"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) =>
@@ -89,7 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
     const user = await getAuthenticatedSession();
     if (!user) {
-      throw redirect({ to: "/auth" });
+      throw redirect({ to: "/auth", search: { intent: "onboarding" } });
     }
   },
   head: () => ({

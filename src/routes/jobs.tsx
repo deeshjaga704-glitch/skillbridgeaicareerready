@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { getSkills, type Skill } from "@/lib/skillbridge-store";
+import type { Skill } from "@/lib/skillbridge-store";
+import { getAuthenticatedSkillProgress } from "@/lib/supabase/profile";
 
 export const Route = createFileRoute("/jobs")({
   head: () => ({
@@ -71,7 +72,7 @@ function JobsPage() {
   const [apps, setApps] = useState<Record<string, AppStatus>>({});
 
   useEffect(() => {
-    setSkills(getSkills());
+    void getAuthenticatedSkillProgress().then(setSkills).catch(() => setSkills([]));
     try {
       const raw = localStorage.getItem(APPS_KEY);
       if (raw) setApps(JSON.parse(raw) as Record<string, AppStatus>);
@@ -108,7 +109,11 @@ function JobsPage() {
         </div>
 
         <div className="grid gap-4">
-          {ranked.map(({ job, low, high, matched, partial, missing }) => {
+          {skills.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Not enough evidence to calculate personalized job fit yet.
+            </div>
+          ) : ranked.map(({ job, low, high, matched, partial, missing }) => {
             const status = apps[job.id];
             return (
               <div key={job.id} className="rounded-3xl border border-border bg-card p-6">

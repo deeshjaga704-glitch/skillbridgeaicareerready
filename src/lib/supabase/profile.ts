@@ -6,8 +6,11 @@ export type OnboardingProfile = {
   name: string;
   educationLevel: string;
   currentJobRole: string;
+  bio: string;
   targetRole: string;
 };
+
+export type AuthenticatedOnboardingProfile = OnboardingProfile;
 
 export async function saveOnboardingProfile(
   onboarding: OnboardingProfile,
@@ -27,6 +30,7 @@ export async function saveOnboardingProfile(
         name: onboarding.name,
         education_level: onboarding.educationLevel,
         current_job_role: onboarding.currentJobRole,
+        bio: onboarding.bio,
       },
       { onConflict: "user_id" },
     )
@@ -528,4 +532,34 @@ export async function getAuthenticatedVerificationRecordByToken(
   }
 
   return row ? fromVerificationRecordRow(row, profile.name) : null;
+}
+
+export async function getAuthenticatedOnboardingProfile(): Promise<AuthenticatedOnboardingProfile | null> {
+  const user = await getAuthenticatedSession();
+  if (!user) throw new Error("Please sign in before completing onboarding.");
+
+  const { data: profile, error: profileError } = await supabase
+    .from("student_profiles")
+    .select("id, name, education_level, current_job_role, bio")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  if (!profile) return null;
+
+  const { data: goal, error: goalError } = await supabase
+    .from("career_goals")
+    .select("target_role")
+    .eq("student_id", profile.id)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  if (goalError) throw goalError;
+
+  return {
+    name: profile.name ?? "",
+    educationLevel: profile.education_level ?? "",
+    currentJobRole: profile.current_job_role ?? "",
+    bio: profile.bio ?? "",
+    targetRole: goal?.target_role ?? "",
+  };
 }

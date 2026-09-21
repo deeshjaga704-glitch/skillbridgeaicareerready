@@ -5,7 +5,8 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { getSkills, getStudent, type Skill, type Student } from "@/lib/skillbridge-store";
+import type { Skill, Student } from "@/lib/skillbridge-store";
+import { getAuthenticatedProfile, getAuthenticatedSkillProgress } from "@/lib/supabase/profile";
 import { requirementsForRole, type Requirement } from "@/lib/skillbridge-roles";
 import { VerificationBadge } from "@/components/verification-badge";
 
@@ -41,8 +42,13 @@ function SkillGapPage() {
   const [student, setStudent] = useState<Student | null>(null);
 
   useEffect(() => {
-    setSkills(getSkills());
-    setStudent(getStudent());
+    void Promise.all([getAuthenticatedSkillProgress(), getAuthenticatedProfile()]).then(([authenticatedSkills, { student }]) => {
+      setSkills(authenticatedSkills);
+      setStudent(student);
+    }).catch(() => {
+      setSkills([]);
+      setStudent(null);
+    });
   }, []);
 
   const reqs = requirementsForRole(student?.targetRole);

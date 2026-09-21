@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Sparkles, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ResumeSkillExtraction } from "@/components/resume-skill-extraction";
 import { saveStudent } from "@/lib/skillbridge-store";
-import { saveOnboardingProfile } from "@/lib/supabase/profile";
+import { getAuthenticatedOnboardingProfile, saveOnboardingProfile } from "@/lib/supabase/profile";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/onboarding")({
@@ -43,12 +43,29 @@ function Onboarding() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [year, setYear] = useState<string>("");
-  const [roleChoice, setRoleChoice] = useState<string>("");
-  const [customRole, setCustomRole] = useState("");
+  const [currentRole, setCurrentRole] = useState("");
+  const [targetRole, setTargetRole] = useState("");
+  const [bio, setBio] = useState("");
   const [resumeName, setResumeName] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 1 && year && (roleChoice || customRole.trim());
+  useEffect(() => {
+    void getAuthenticatedOnboardingProfile().then((profile) => {
+      if (profile) {
+        setName(profile.name);
+        setYear(profile.educationLevel);
+        setCurrentRole(profile.currentJobRole);
+        setTargetRole(profile.targetRole);
+        setBio(profile.bio);
+      }
+    }).catch((error) => {
+      setLoadError(error instanceof Error ? error.message : "We couldn't load your profile.");
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const canSubmit = name.trim().length > 1 && year && currentRole.trim() && targetRole.trim() && bio.trim();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,19 +73,18 @@ function Onboarding() {
     setSubmitting(true);
 
     try {
-      const targetRole = customRole.trim() || roleChoice;
-
       await saveOnboardingProfile({
         name: name.trim(),
         educationLevel: year,
-        currentJobRole: targetRole,
-        targetRole,
+        currentJobRole: currentRole.trim(),
+        bio: bio.trim(),
+        targetRole: targetRole.trim(),
       });
 
       saveStudent({
         name: name.trim(),
         yearOfStudy: year,
-        targetRole,
+        targetRole: targetRole.trim(),
         resumeFileName: resumeName ?? undefined,
         createdAt: new Date().toISOString(),
       });
@@ -115,7 +131,8 @@ function Onboarding() {
           onSubmit={onSubmit}
           className="mt-8 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-lg shadow-primary/5 backdrop-blur sm:p-8"
         >
-          <div className="space-y-6">
+            <div className="space-y-6">
+            {loadError && <p className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{loadError}</p>}
             <div className="space-y-2">
               <Label htmlFor="name">Your name</Label>
               <Input
@@ -145,8 +162,18 @@ function Onboarding() {
             </div>
 
             <div className="space-y-2">
-              <Label>Target role</Label>
-              <Select value={roleChoice} onValueChange={setRoleChoice}>
+              <Label htmlFor="current-role">Current role</Label>
+              <Input id="current-role" placeholder="Student, intern, or current role" value={currentRole} onChange={(e) => setCurrentRole(e.target.value)} maxLength={120} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <textarea id="bio" className="min-h-28 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" placeholder="Tell us a little about your background" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={1000} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Target career role</Label>
+              <Select value={targetRole} onValueChange={setTargetRole}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pick the closest match" />
                 </SelectTrigger>
@@ -159,12 +186,7 @@ function Onboarding() {
                 </SelectContent>
               </Select>
               <div className="pt-1">
-                <Input
-                  placeholder="…or type your own (e.g. Robotics Engineer)"
-                  value={customRole}
-                  onChange={(e) => setCustomRole(e.target.value)}
-                  maxLength={80}
-                />
+                <Input placeholder="…or type your own (e.g. Robotics Engineer)" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} maxLength={80} />
               </div>
               <p className="flex items-start gap-1.5 pt-1 text-xs text-muted-foreground">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -193,7 +215,7 @@ function Onboarding() {
               type="submit"
               size="lg"
               className="h-11 rounded-full px-6"
-              disabled={!canSubmit || submitting}
+              disabled={!canSubmit || submitting || loading}
             >
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>

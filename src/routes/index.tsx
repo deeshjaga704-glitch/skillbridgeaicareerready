@@ -111,12 +111,12 @@ function Landing() {
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          <Link to="/dashboard">
+          <Link to="/auth" search={{ intent: "login" }}>
             <Button variant="ghost" className="rounded-full">
               I already have an account
             </Button>
           </Link>
-          <Link to="/onboarding">
+          <Link to="/auth" search={{ intent: "onboarding" }}>
             <Button className="rounded-full">Get started</Button>
           </Link>
         </div>
@@ -140,7 +140,7 @@ function Landing() {
             with the tests, code review, and evidence report attached.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/onboarding">
+            <Link to="/auth" search={{ intent: "onboarding" }}>
               <Button size="lg" className="h-12 rounded-full px-6 text-base">
                 Get started <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
@@ -337,7 +337,7 @@ function Landing() {
           <p className="mt-2 text-primary-foreground/80">
             Takes 60 seconds to set up. Your first verified project can happen this week.
           </p>
-          <Link to="/onboarding">
+          <Link to="/auth" search={{ intent: "onboarding" }}>
             <Button
               size="lg"
               variant="secondary"

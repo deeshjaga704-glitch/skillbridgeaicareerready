@@ -49,8 +49,8 @@ export async function loadReportRecord(token: string): Promise<{
       status: record.outcome === "verified" ? "verified" : "needs-evidence",
       source: "project",
       lastVerifiedAt: record.outcome === "verified" ? record.timestamp : undefined,
-      confidenceLow: 70,
-      confidenceHigh: 83,
+      confidenceLow: 0,
+      confidenceHigh: 0,
     } as Skill);
 
   return {

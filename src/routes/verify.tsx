@@ -23,23 +23,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
-  getStudent,
-  saveSkills,
-  upsertRecord,
-  pushActivity,
   type Skill,
   type SignalType,
   type VerificationMethod,
   type VerificationRecord,
 } from "@/lib/skillbridge-store";
 import { SkillStatusBadge } from "@/components/skill-status-badge";
-import { skillState, projectsForSkill } from "@/lib/skillbridge-evidence";
+import { skillState } from "@/lib/skillbridge-evidence";
 import {
   analyzeEvidence,
   type VerificationAnalysis,
   type CheckOutcome,
 } from "@/lib/verification-analysis.functions";
 import {
+  getAuthenticatedProfile,
   getAuthenticatedSkillProgress,
   persistVerificationRecord,
   persistVerifiedSkillProgress,
@@ -180,7 +177,7 @@ function VerifyFlow() {
       return;
     }
 
-    const student = getStudent();
+    const { student } = await getAuthenticatedProfile();
     const token = `${skill.name.toLowerCase().replace(/[^a-z]/g, "")}-${Date.now().toString(36)}`;
     const rec: VerificationRecord = {
       id: crypto.randomUUID(),
@@ -188,7 +185,7 @@ function VerifyFlow() {
       skillId: skill.id,
       skillName: skill.name,
       evidenceUrl: url.trim() || undefined,
-      studentName: student?.name ?? "Alex Rivera",
+      studentName: student?.name ?? "Authenticated student",
       method: source,
       outcome: analysis.outcome,
       evidenceSummary: analysis.repo ? `${analysis.repo.fullName} — ${analysis.repo.commits} commits, ${analysis.repo.files} files` : url || "No inspectable evidence supplied",
@@ -223,27 +220,7 @@ function VerifyFlow() {
       return;
     }
 
-    upsertRecord(rec);
-    const next = skills.map((s) =>
-      s.id === skill.id
-        ? {
-            ...s,
-            status: (verified ? "verified" : "needs-evidence") as Skill["status"],
-            source: "project" as const,
-            lastVerifiedAt: verified ? rec.timestamp : s.lastVerifiedAt,
-            confidenceLow: Math.max(0, analysis.overall - 7),
-            confidenceHigh: Math.min(100, analysis.overall + 6),
-            verificationMethod: source,
-            verificationRecordId: rec.id,
-          }
-        : s,
-    );
-    saveSkills(next);
-    setSkills(verified ? await getAuthenticatedSkillProgress() : next);
-    pushActivity({
-      reason: `${skill.name} ${verified ? "verified" : "analysed"}`,
-      detail: `${analysis.checks.filter((c) => c.outcome === "pass").length}/${analysis.checks.length} checks passed`,
-    });
+    setSkills(await getAuthenticatedSkillProgress());
     setRecord(rec);
     setStep(5);
     if (verified) toast.success(`${skill.name} is now verified`);
@@ -298,7 +275,7 @@ function VerifyFlow() {
                   <span className="font-medium">{s.name}</span>
                   <SkillStatusBadge state={skillState(s)} />
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {projectsForSkill(s.name).length} project(s) on file
+                    0 project(s) on file
                   </span>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </button>
