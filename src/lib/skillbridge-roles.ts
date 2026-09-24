@@ -22,6 +22,13 @@ export const ROLE_REQUIREMENTS: Record<string, Requirement[]> = {
     requirement("Testing", "helpful", "Use automated checks to make changes safely.", [{ label: "Add a regression test suite", kind: "project" }]),
     requirement("System Design", "helpful", "Explain how reliable software is structured and scaled.", [{ label: "Design a URL shortener", kind: "practice" }]),
   ],
+  "software engineer": [
+    requirement("Programming fundamentals", "core", "Write clear, testable programs in a language used by your target teams.", [{ label: "Build a small tested program", kind: "project" }]),
+    requirement("Git & GitHub", "core", "Collaborate through branches, pull requests, and code review.", [{ label: "Branch, review, merge a real repo", kind: "project" }]),
+    requirement("SQL", "helpful", "Query and model data used by modern applications.", [{ label: "Design + query a small schema", kind: "project" }]),
+    requirement("Testing", "helpful", "Use automated checks to make changes safely.", [{ label: "Add a regression test suite", kind: "project" }]),
+    requirement("System Design", "helpful", "Explain how reliable software is structured and scaled.", [{ label: "Design a URL shortener", kind: "practice" }]),
+  ],
   "frontend engineer": [
     requirement("HTML/CSS", "core", "Build accessible, responsive interfaces from solid web fundamentals.", [{ label: "Build a responsive landing page", kind: "project" }]),
     requirement("JavaScript", "core", "Create interactive browser experiences with confidence.", [{ label: "JavaScript browser exercises", kind: "practice" }]),
@@ -173,6 +180,7 @@ export const ROLE_REQUIREMENTS: Record<string, Requirement[]> = {
 export function requirementsForRole(role?: string): Requirement[] {
   const normalizedRole = role?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
   const aliases: Record<string, string> = {
+    "software developer": "software engineer",
     "frontend developer": "frontend engineer",
     "front end engineer": "frontend engineer",
     "front-end engineer": "frontend engineer",

@@ -55,7 +55,7 @@ const SCORE_KEY = "skillbridge:score:v1";
 let activeUserId: string | null = null;
 
 export function setActiveUserId(userId: string | null) {
-  activeUserId = userId;
+  activeUserId = userId && userId.trim() ? userId : null;
 }
 
 function storageKey(key: string) {
@@ -86,15 +86,28 @@ export const DEFAULT_CONNECTIONS: Connection[] = [
 
 export function getConnections(): Connection[] {
   if (typeof window === "undefined") return DEFAULT_CONNECTIONS;
-  try {
+
+  if (activeUserId) {
     const raw = localStorage.getItem(storageKey(CONN_KEY));
-    return raw ? (JSON.parse(raw) as Connection[]) : activeUserId ? [] : DEFAULT_CONNECTIONS;
+    return raw ? (JSON.parse(raw) as Connection[]) : [];
+  }
+
+  try {
+    const raw = localStorage.getItem(CONN_KEY);
+    return raw ? (JSON.parse(raw) as Connection[]) : DEFAULT_CONNECTIONS;
   } catch {
-    return activeUserId ? [] : DEFAULT_CONNECTIONS;
+    return DEFAULT_CONNECTIONS;
   }
 }
+
 export function saveConnections(c: Connection[]) {
-  localStorage.setItem(storageKey(CONN_KEY), JSON.stringify(c));
+  if (activeUserId) {
+    localStorage.setItem(storageKey(CONN_KEY), JSON.stringify(c));
+    localStorage.removeItem(CONN_KEY);
+    return;
+  }
+
+  localStorage.setItem(CONN_KEY, JSON.stringify(c));
 }
 
 export type ActivityItem = {
