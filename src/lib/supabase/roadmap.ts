@@ -121,6 +121,58 @@ function roadmapMatchesDefinitions(rows: Array<Record<string, unknown>>, definit
   );
 }
 
+export function buildRoadmapStepRows(
+  definitions: ReadonlyArray<RoadmapStepDefinition>,
+  completedTitles: ReadonlySet<string> = new Set(),
+): Array<{ title: string; description: string; skill_category: string; step_order: number; status: string; progress_percentage: number }> {
+  return definitions.map((definition, index) => {
+    const completed = definition.auto || completedTitles.has(definition.title);
+    const skillCategory = definition.id.startsWith("core-") || definition.id.startsWith("helpful-")
+      ? definition.id.split("-").slice(1).join("-")
+      : "Career foundation";
+
+    return {
+      title: definition.title,
+      description: definition.detail,
+      skill_category: skillCategory,
+      step_order: index + 1,
+      status: completed ? "completed" : "pending",
+      progress_percentage: completed ? 100 : 0,
+    };
+  });
+}
+
+export function shouldRepairRoadmap({
+  roadmap,
+  goalId,
+  existingSteps,
+  definitions,
+}: {
+  roadmap: RoadmapRow | null;
+  goalId: string | null;
+  existingSteps: Array<Record<string, unknown>>;
+  definitions: RoadmapStepDefinition[];
+}): boolean {
+  if (!roadmap) return false;
+  if (roadmap.career_goal_id !== (goalId ?? null)) return true;
+  if (existingSteps.length === 0) return true;
+  return !roadmapMatchesDefinitions(existingSteps, definitions);
+}
+
+export function getRoadmapStatus<T extends { completed?: boolean; id?: string }>(steps: T[]) {
+  const nextStep = steps.find((step) => step.completed !== true);
+  const hasMilestones = steps.length > 0;
+  const isEmpty = !hasMilestones;
+  const isComplete = hasMilestones && steps.every((step) => step.completed === true);
+
+  return {
+    hasMilestones,
+    isEmpty,
+    isComplete,
+    nextStep: nextStep ?? undefined,
+  };
+}
+
 async function getContext(supabase: ServerSupabaseClient) {
   const { getServerAuthenticatedUser } = await import("@/lib/supabase/server");
   const user = await getServerAuthenticatedUser(supabase);
@@ -206,7 +258,14 @@ export const loadOrCreateRoadmap = createServerFn({ method: "POST" })
         existingSteps = (loadedSteps ?? []) as Array<Record<string, unknown>>;
       }
 
-      if ((roadmap && roadmap.career_goal_id !== (goal?.id ?? null)) || (roadmap && !roadmapMatchesDefinitions(existingSteps, definitions))) {
+      const roadmapNeedsRepair = shouldRepairRoadmap({
+        roadmap,
+        goalId: goal?.id ?? null,
+        existingSteps,
+        definitions,
+      });
+
+      if (roadmap && roadmapNeedsRepair && (roadmap.career_goal_id !== (goal?.id ?? null) || existingSteps.length > 0)) {
         const { error: retireError } = await supabase
           .from("roadmaps")
           .update({ status: "inactive" })
@@ -218,44 +277,52 @@ export const loadOrCreateRoadmap = createServerFn({ method: "POST" })
       }
 
       if (!roadmap) {
-      const completedTitles = new Set(
-        existingRoadmapGoalId === (goal?.id ?? null) ?
-        existingSteps
-          .filter((step) => step.status === "completed" || Number(step.progress_percentage ?? 0) >= 100)
-          .map((step) => step.title) : [],
-      );
-      const stepRows = definitions.map((definition, index) => ({
-        title: definition.title,
-        description: definition.detail,
-        skill_category: definition.id.startsWith("core-") || definition.id.startsWith("helpful-") ? definition.id.split("-").slice(1).join("-") : "Career foundation",
-        step_order: index + 1,
-        status: definition.auto || completedTitles.has(definition.title) ? "completed" : "pending",
-        progress_percentage: definition.auto || completedTitles.has(definition.title) ? 100 : 0,
-      }));
-      const { data: createdRoadmap, error: createError } = await supabase
-        .from("roadmaps")
-        .insert({
-          student_id: studentId,
-          career_goal_id: goal?.id ?? null,
-          title: "Your Career Roadmap",
-          description: goal?.target_role ? `A roadmap toward ${goal.target_role}.` : "Your personalized career roadmap.",
-          status: "active",
-          progress_percentage: progressFromSteps(stepRows),
-        })
-        .select("id, student_id, career_goal_id, title, description, status, progress_percentage, created_at, updated_at")
-        .single();
-      if (createError) throw createError;
-      const candidateRoadmap = createdRoadmap as RoadmapRow;
-      const authoritativeRoadmap = await findOwnedActiveRoadmap(supabase, studentId);
-      if (!authoritativeRoadmap) throw new Error("The roadmap could not be loaded after creation.");
-      roadmap = authoritativeRoadmap;
+        const completedTitles = new Set<string>(
+          existingRoadmapGoalId === (goal?.id ?? null)
+            ? existingSteps
+                .filter((step) => step.status === "completed" || Number(step.progress_percentage ?? 0) >= 100)
+                .map((step) => String(step.title))
+            : [],
+        );
+        const stepRows = buildRoadmapStepRows(definitions, completedTitles);
+        const { data: createdRoadmap, error: createError } = await supabase
+          .from("roadmaps")
+          .insert({
+            student_id: studentId,
+            career_goal_id: goal?.id ?? null,
+            title: "Your Career Roadmap",
+            description: goal?.target_role ? `A roadmap toward ${goal.target_role}.` : "Your personalized career roadmap.",
+            status: "active",
+            progress_percentage: progressFromSteps(stepRows),
+          })
+          .select("id, student_id, career_goal_id, title, description, status, progress_percentage, created_at, updated_at")
+          .single();
+        if (createError) throw createError;
+        const candidateRoadmap = createdRoadmap as RoadmapRow;
+        const authoritativeRoadmap = await findOwnedActiveRoadmap(supabase, studentId);
+        if (!authoritativeRoadmap) throw new Error("The roadmap could not be loaded after creation.");
+        roadmap = authoritativeRoadmap;
 
-      if (authoritativeRoadmap.id === candidateRoadmap.id) {
+        if (authoritativeRoadmap.id === candidateRoadmap.id) {
+          const { error: stepsError } = await supabase.from("roadmap_steps").insert(
+            stepRows.map((step) => ({ ...step, roadmap_id: candidateRoadmap.id })),
+          );
+          if (stepsError) throw stepsError;
+        }
+      } else if (existingSteps.length === 0) {
+        const activeRoadmap = roadmap;
+        if (!activeRoadmap) {
+          throw new Error("Roadmap is missing while repairing an empty step list.");
+        }
+        const stepRows = buildRoadmapStepRows(definitions, new Set<string>());
         const { error: stepsError } = await supabase.from("roadmap_steps").insert(
-          stepRows.map((step) => ({ ...step, roadmap_id: candidateRoadmap.id })),
+          stepRows.map((step) => ({ ...step, roadmap_id: activeRoadmap.id })),
         );
         if (stepsError) throw stepsError;
       }
+
+      if (!roadmap) {
+        throw new Error("Roadmap could not be loaded after initialization.");
       }
 
       const { data: steps, error: stepsError } = await supabase

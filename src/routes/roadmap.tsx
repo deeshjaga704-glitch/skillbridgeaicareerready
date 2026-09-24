@@ -19,10 +19,11 @@ import { MagicCard } from "@/components/ui/magic-card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { SkillStatusBadge } from "@/components/skill-status-badge";
 import { cn } from "@/lib/utils";
-import type { Skill, Student } from "@/lib/skillbridge-store";
+import { getConnections, type Skill, type Student } from "@/lib/skillbridge-store";
 import { getAuthenticatedProfile, getAuthenticatedSkillProgress } from "@/lib/supabase/profile";
 import { useServerFn } from "@tanstack/react-start";
-import { loadOrCreateRoadmap, updateRoadmapStep, type PersistedRoadmapStep } from "@/lib/supabase/roadmap";
+import { getRoadmapStatus, loadOrCreateRoadmap, updateRoadmapStep, type PersistedRoadmapStep } from "@/lib/supabase/roadmap";
+import { getConnectionCompletionState } from "@/lib/roadmap-generator";
 
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
@@ -79,6 +80,7 @@ function RoadmapPage() {
   const [progressPercentage, setProgressPercentage] = React.useState(0);
   const journeyRef = React.useRef<HTMLDivElement>(null);
   const milestoneRefs = React.useRef<Record<string, React.RefObject<HTMLDivElement | null>>>({});
+  const connectionCompletion = React.useMemo(() => getConnectionCompletionState(getConnections()), []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -97,8 +99,18 @@ function RoadmapPage() {
       setSkills(authenticatedSkills);
       const roadmap = await loadRoadmap({ data: {} });
       if (!cancelled) {
-        setProgressPercentage(roadmap.progressPercentage);
-        setSteps(roadmap.steps.map((step) => ({ ...step, detail: step.description ?? "" })));
+        const normalizedSteps = roadmap.steps.map((step) => ({
+          ...step,
+          detail: step.description ?? "",
+          completed: step.id === "connect"
+            ? getConnectionCompletionState(getConnections()).isComplete
+            : step.completed,
+        }));
+        const normalizedProgress = normalizedSteps.length
+          ? Math.round(normalizedSteps.reduce((total, step) => total + (step.completed ? 100 : 0), 0) / normalizedSteps.length)
+          : 0;
+        setProgressPercentage(normalizedProgress);
+        setSteps(normalizedSteps);
       }
     }).catch(() => undefined);
 
@@ -122,47 +134,24 @@ function RoadmapPage() {
     const step = steps.find((item) => item.id === id);
     if (!step) return;
     const isConnectStep = step.title === "Connect your accounts";
-    if (isConnectStep) {
-      console.log("[ROADMAP_CONNECT_DIAG] click handler started", {
-        title: step.title,
-        stepId: step.id,
-        completed: step.completed,
-      });
+    const connectIsCompleteAccordingToEvidence = getConnectionCompletionState(getConnections()).isComplete;
+    if (isConnectStep && !connectIsCompleteAccordingToEvidence) {
+      return;
     }
     try {
-      if (isConnectStep) {
-        console.log("[ROADMAP_CONNECT_DIAG] before updateRoadmapStep", {
-          title: step.title,
-          stepId: step.id,
-          completed: step.completed,
-        });
-      }
       const updated = await saveStep({ data: { stepId: id, completed: !step.completed } });
-      if (isConnectStep) {
-        console.log("[ROADMAP_CONNECT_DIAG] updateRoadmapStep resolved", {
-          title: step.title,
-          stepId: step.id,
-          completed: step.completed,
-          result: updated,
-        });
-      }
       setSteps((current) => current.map((item) => item.id === id ? { ...item, status: updated.status, progress_percentage: updated.progress_percentage, completed: updated.status === "completed" } : item));
       setProgressPercentage((current) => Math.round(((steps.reduce((total, item) => total + (item.id === id ? updated.progress_percentage : item.progress_percentage), 0)) / steps.length)));
     } catch (error) {
-      if (isConnectStep) {
-        console.error("[ROADMAP_CONNECT_DIAG] updateRoadmapStep failed", {
-          title: step.title,
-          stepId: step.id,
-          completed: step.completed,
-          error,
-        });
-      }
       console.error("[ROADMAP_STEP_UPDATE_DIAG]", error);
     }
   };
 
-  const nextIndex = steps.findIndex((s) => !isDone(s));
-  const nextStep = nextIndex >= 0 ? steps[nextIndex] : undefined;
+  const roadmapStatus = getRoadmapStatus(steps.map((step) => ({ ...step, completed: isDone(step) })));
+  const nextIndex = roadmapStatus.nextStep ? steps.findIndex((s) => s.id === roadmapStatus.nextStep?.id) : -1;
+  const nextStep = roadmapStatus.nextStep;
+  const isRoadmapEmpty = roadmapStatus.isEmpty;
+  const isRoadmapComplete = roadmapStatus.isComplete;
 
   const skillForStep = (step: Step) => {
     const skillName = step.title.replace(/^(Verify|Strengthen|Verified) /, "");
@@ -257,6 +246,8 @@ function RoadmapPage() {
                 <p className="text-sm text-muted-foreground">
                   Next: <span className="font-semibold text-foreground">{nextStep.title}</span>
                 </p>
+              ) : isRoadmapEmpty ? (
+                <p className="text-sm font-semibold text-primary">Roadmap not available yet</p>
               ) : (
                 <p className="text-sm font-semibold text-primary">Every milestone is complete</p>
               )}
@@ -419,7 +410,9 @@ function RoadmapPage() {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {nextStep
                   ? `Start with “${nextStep.title}”. Finishing one milestone gives you a concrete signal to build on before moving forward.`
-                  : "Review your evidence and keep your strongest proof current as you prepare to apply."}
+                  : isRoadmapEmpty
+                    ? "Your roadmap is still being prepared. There are no milestones yet, so there is no completion status to claim."
+                    : "Review your evidence and keep your strongest proof current as you prepare to apply."}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5">
