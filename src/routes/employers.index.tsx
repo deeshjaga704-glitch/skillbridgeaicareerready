@@ -16,7 +16,7 @@ export const Route = createFileRoute("/employers/")({
       { property: "og:title", content: "Hire on evidence — SkillBridge AI for employers" },
       { property: "og:description", content: "Filter candidates by verified skills and open the evidence behind each one." },
     ],
-    links: [{ rel: "canonical", href: "https://skillbridgeaicareerready.lovable.app/employers" }],
+    links: [{ rel: "canonical", href: "/employers" }],
   }),
   component: EmployersPage,
 });
@@ -36,8 +36,12 @@ function EmployersPage() {
     <div className="min-h-screen">
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-5">
-          <Link to="/" className="font-display font-bold">
-            SkillBridge <span className="text-primary">AI</span>
+          <Link to="/" className="flex items-center gap-2" aria-label="SkillBridgeAI home">
+            <img
+              src="/brand/skillbridgeai-horizontal.svg"
+              alt="SkillBridgeAI logo"
+              className="h-8 w-auto"
+            />
           </Link>
           <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-semibold text-primary">
             Employers
