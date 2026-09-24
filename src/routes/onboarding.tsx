@@ -105,13 +105,12 @@ function Onboarding() {
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-xl gradient-brand text-primary-foreground">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <span className="font-display text-lg font-bold tracking-tight">
-            SkillBridge <span className="text-primary">AI</span>
-          </span>
+        <Link to="/" className="flex items-center gap-2" aria-label="SkillBridgeAI home">
+          <img
+            src="/brand/skillbridgeai-horizontal.svg"
+            alt="SkillBridgeAI logo"
+            className="h-8 w-auto"
+          />
         </Link>
         <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="mr-1 inline h-4 w-4" />
