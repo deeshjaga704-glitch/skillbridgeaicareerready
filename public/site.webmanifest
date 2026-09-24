@@ -1,0 +1,17 @@
+{
+  "name": "SkillBridgeAI",
+  "short_name": "SkillBridgeAI",
+  "description": "Verified career readiness for students",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#071A2F",
+  "theme_color": "#071A2F",
+  "icons": [
+    {
+      "src": "/brand/skillbridgeai-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

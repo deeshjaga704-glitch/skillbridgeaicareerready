@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071A2F"/>
+      <stop offset="1" stop-color="#0D2446"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="124" y1="108" x2="388" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.28" stop-color="#C084FC"/>
+      <stop offset="0.56" stop-color="#22D3EE"/>
+      <stop offset="0.76" stop-color="#F472B6"/>
+      <stop offset="1" stop-color="#FBBF24"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="320" y1="64" x2="420" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="0.5" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#8B5CF6" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#22D3EE" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <rect x="32" y="32" width="448" height="448" rx="108" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="170" fill="url(#neon)" opacity="0.12"/>
+
+  <g filter="url(#glow)">
+    <path d="M120 290V198C120 171.49 141.49 150 168 150H344C370.51 150 392 171.49 392 198V290" stroke="url(#neon)" stroke-width="22" stroke-linecap="round"/>
+    <path d="M168 150L256 82L344 150" stroke="url(#neon)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M204 150V294H308V150" stroke="url(#neon)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M108 302H404" stroke="url(#neon)" stroke-width="20" stroke-linecap="round"/>
+    <path d="M150 326C193 350 220 360 256 366C294 372 326 366 363 340" stroke="url(#neon)" stroke-width="18" stroke-linecap="round"/>
+    <path d="M162 335L214 402L256 286L298 402L350 335" stroke="url(#neon)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <path d="M335 98L351 133L388 149L351 165L335 200L319 165L282 149L319 133L335 98Z" fill="url(#gold)"/>
+</svg>

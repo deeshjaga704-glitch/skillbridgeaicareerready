@@ -1,0 +1,29 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071A2F"/>
+      <stop offset="1" stop-color="#0D2446"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="14" y1="12" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.3" stop-color="#C084FC"/>
+      <stop offset="0.6" stop-color="#22D3EE"/>
+      <stop offset="0.8" stop-color="#F472B6"/>
+      <stop offset="1" stop-color="#FBBF24"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="38" y1="8" x2="54" y2="26" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="0.5" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#bg)"/>
+  <path d="M16 36V24C16 18.4772 20.4772 14 26 14H38C43.5228 14 48 18.4772 48 24V36" stroke="url(#neon)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M26 14L32 8L38 14" stroke="url(#neon)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M25 14V39H39V14" stroke="url(#neon)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15 38H49" stroke="url(#neon)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M19 42C23 45.4 27.5 46.8 32 47.2C37 47.6 42 46 46 42" stroke="url(#neon)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M20 43L25 52L32 34L39 52L44 43" stroke="url(#neon)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M43 13L46 19L52 22L46 25L43 31L40 25L34 22L40 19L43 13Z" fill="url(#gold)"/>
+</svg>
